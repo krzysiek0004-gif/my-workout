@@ -251,6 +251,104 @@ const PL_EQUIPMENT = {"barbell":"sztanga","dumbbell":"hantle","bodyweight":"masa
 const PL_BODY = {"chest":"klatka piersiowa","back":"plecy","shoulders":"barki","upper arms":"ramiona","lower arms":"przedramiona","upper legs":"uda","lower legs":"łydki","waist":"brzuch","glutes":"pośladki","cardio":"kondycyjne","neck":"kark"};
 function normalizeExerciseName(v){return String(v||"").toLowerCase().replace(/[’']/g,"").replace(/[^a-z0-9]+/g," ").trim()}
 function repdbName(ex){return PL_EXERCISE_NAMES[normalizeExerciseName(ex.name_en)]||ex.name_en||"Ćwiczenie"}
+Object.assign(PL_BODY,{"core":"mięśnie brzucha i korpusu","full_body":"całe ciało","lower_arms":"przedramiona","lower_legs":"łydki","upper_arms":"ramiona","upper_legs":"uda"});
+Object.assign(PL_EQUIPMENT,{
+ "ab_crunch_machine":"maszyna do spięć brzucha","ab_wheel":"kółko do ćwiczeń brzucha","air_bike":"rowerek powietrzny",
+ "assisted_pullup_machine":"maszyna do podciągania z asystą","back_extension_machine":"maszyna do prostowania tułowia",
+ "battle_rope":"lina treningowa","bicycle":"rower","bosu_ball":"piłka BOSU","chest_fly_machine":"maszyna do rozpiętek",
+ "chest_press_machine":"maszyna do wyciskania na klatkę","climbing_rope":"lina do wspinania","dip_machine":"maszyna do pompek na poręczach",
+ "dip_station":"poręcze","donkey_calf_raise_machine":"maszyna do wspięć na palce","elliptical":"orbitrek","flat_bench":"ławka pozioma",
+ "glute_ham_developer":"ławka do ćwiczeń pośladków i dwugłowych ud","hack_squat":"maszyna do przysiadów",
+ "hip_abduction_machine":"maszyna do odwodzenia nóg","hip_adduction_machine":"maszyna do przywodzenia nóg",
+ "hip_thrust_machine":"maszyna do wypychania bioder","jump_rope":"skakanka","lat_pulldown_machine":"maszyna do ściągania drążka",
+ "leg_curl":"maszyna do uginania nóg","leg_extension":"maszyna do prostowania nóg","leg_press":"suwnica",
+ "loop_band":"mini guma oporowa","medicine_ball":"piłka lekarska","pec_deck":"maszyna do rozpiętek",
+ "plates":"talerze obciążeniowe","plyo_box":"skrzynia plyometryczna","preacher_curl_machine":"modlitewnik",
+ "pull_up_bar":"drążek do podciągania","reverse_fly_machine":"maszyna do rozpiętek odwrotnych","rings":"kółka gimnastyczne",
+ "rower":"ergometr wioślarski","sandbag":"worek treningowy","seated_calf_raise_machine":"maszyna do wspięć na palce siedząc",
+ "seated_row_machine":"maszyna do wiosłowania siedząc","shoulder_press_machine":"maszyna do wyciskania na barki",
+ "shrug_machine":"maszyna do szrugsów","ski_erg":"ergometr narciarski","slam_ball":"piłka treningowa","sled":"sanie treningowe",
+ "stability_ball":"piłka gimnastyczna","stair_climber":"schody treningowe","standing_calf_raise_machine":"maszyna do wspięć na palce stojąc",
+ "stationary_bike":"rower stacjonarny","suspension_trainer":"taśmy podwieszane","trap_bar":"gryf heksagonalny",
+ "treadmill":"bieżnia","tricep_extension_machine":"maszyna do prostowania ramion","wall_ball":"piłka do rzutu o ścianę",
+ "wrist_roller":"wałek do ćwiczenia przedramion"
+});
+const PL_NAME_WORDS = {
+ "ab":"brzucha","abduction":"odwodzenie","adduction":"przywodzenie","adductor":"przywodzicieli","air":"powietrzny",
+ "angle":"kąt","ankle":"stawu skokowego","archer":"łucznicze","arm":"ramię","assisted":"z asystą","baby":"dziecka",
+ "back":"pleców","balance":"równowaga","ball":"piłka","band":"guma oporowa","banded":"z gumą oporową",
+ "barbell":"ze sztangą","bars":"na poręczach","battle":"treningowa","bear":"niedźwiedzia","behind":"zza","bench":"ławka",
+ "bend":"skłon","bent":"w opadzie","bicep":"bicepsa","bicycle":"rowerek","bike":"rower","bilateral":"obustronne",
+ "bird":"ptak","boat":"łódź","body":"ciało","bodyweight":"z masą własnego ciała","bottoms":"dnem do góry","bow":"łuk",
+ "box":"skrzynia","bridge":"most biodrowy","bug":"robak","bulgarian":"bułgarski","burpees":"burpees","butterfly":"motyl",
+ "cable":"wyciąg","calf":"łydki","camel":"wielbłąd","carry":"marsz z obciążeniem","cat":"kot","chair":"krzesło",
+ "cheat":"oszukane","chest":"klatki piersiowej","childs":"dziecka","chin":"podbródek","clamshell":"muszelka",
+ "clamshells":"muszelki","clap":"z klaśnięciem","clean":"zarzut","climb":"wspinaczka","climber":"wspinacz",
+ "climbers":"bieg w podporze","close":"wąski","cobra":"kobra","cocoons":"kołyski","commando":"komandos",
+ "concentration":"koncentracyjne","corpse":"martwego ciała","cossack":"kozacki","couch":"kanapowe","cow":"krowa",
+ "crab":"krab","crawl":"chód","crescent":"półksiężyc","cross":"naprzemienny","crow":"kruk","crunch":"spięcia brzucha",
+ "crunches":"spięcia brzucha","crusher":"francuskie","curl":"uginanie","cycling":"jazda na rowerze","dancer":"tancerza",
+ "dead":"martwy","deadlift":"martwy ciąg","deck":"maszyna do rozpiętek","decline":"ujemny","deep":"głęboki",
+ "deficit":"z deficytu","delt":"akton barków","diamond":"diamentowe","dip":"pompki na poręczach","dips":"pompki na poręczach",
+ "dog":"pies","dolphin":"delfin","dome":"kopuła równoważna","donkey":"osioł","doorway":"w futrynie drzwi",
+ "double":"oburącz","down":"w dół","downward":"z głową w dół","drag":"przeciągane","dragon":"smok","drive":"wypychanie",
+ "dumbbell":"hantle","eagle":"orzeł","easy":"łatwa","elevated":"z podwyższeniem","elliptical":"orbitrek",
+ "extended":"rozszerzony","extension":"prostowanie","external":"zewnętrzna rotacja","ez":"łamany","face":"twarzy",
+ "farmers":"farmera","figure":"figura","fire":"hydrant","fish":"ryba","flag":"flaga","flexed":"zgięte","flexion":"zginanie",
+ "flexor":"zginaczy","flicks":"wymachy","floor":"na podłodze","flow":"sekwencja","flutter":"nożyce","fly":"rozpiętki",
+ "fold":"skłon","foot":"stopa","forward":"w przód","frog":"żaba","front":"przód","garland":"girlanda","get":"wstawanie",
+ "glute":"pośladki","goblet":"goblet","good":"dzień dobry","greatest":"największe","grip":"chwyt","hack":"hack",
+ "half":"połowa","halo":"halo","hammer":"młotkowe","hamstring":"tył uda","hands":"dłonie","handstand":"stanie na rękach",
+ "hang":"zwis","hanging":"w zwisie","happy":"szczęśliwe dziecko","head":"głowa","heel":"pięty","hero":"bohater",
+ "hex":"heksagonalny","high":"wysoki","hip":"biodra","hold":"utrzymanie pozycji","hollow":"hollow body","horizontal":"poziomy",
+ "human":"ludzka","hydrant":"odwodzenie nogi w klęku","hyperextension":"przeprost","inch":"cale","inchworm":"gąsienica",
+ "incline":"skośny dodatni","inverted":"odwrócone","iso":"izometryczne","isometric":"izometryczny",
+ "it":"pasmo biodrowo-piszczelowe","jackknife":"scyzoryk","jacks":"pajacyki","jerk":"podrzut","jump":"wyskok",
+ "jumping":"podskoki","kettlebell":"kettlebell","kick":"kopnięcie","kickback":"prostowanie w tył","kicks":"kopnięcia",
+ "kickstand":"z nogą podporową","knee":"kolano","kneeling":"w klęku","knees":"kolana","landmine":"landmine",
+ "lat":"najszerszy grzbietu","lateral":"bokiem","lean":"pochylenie","leg":"noga","legs":"nogi","legged":"na nodze",
+ "lever":"dźwignia","lift":"unoszenie","lizard":"jaszczurka","loaded":"z obciążeniem","locust":"szarańcza","low":"niski",
+ "lunge":"wykrok","lying":"leżąc","machine":"maszyna","medicine":"lekarska","moon":"księżyc","morning":"dzień dobry",
+ "mountain":"górski","muscle":"mięśniowy","neck":"szyja","needle":"igła","negative":"negatywne","neutral":"neutralny",
+ "nordic":"nordyckie","offset":"asymetryczny","one":"jednorącz","over":"nad","overhead":"nad głowę","pause":"pauza",
+ "paused":"z pauzą","pec":"klatki piersiowej","pedal":"pedałowanie","pigeon":"gołąb","pike":"szczupak","pilates":"pilates",
+ "pinch":"ściskanie","pistol":"pistoletowy","planche":"planche","plank":"deska","plate":"talerz","plow":"pług",
+ "plyo":"plyometryczny","pose":"pozycja","power":"siłowy","preacher":"modlitewnik","press":"wyciskanie","pseudo":"pseudo",
+ "pull":"przyciąganie","pulldown":"ściąganie drążka","pullover":"przenoszenie za głowę","pulse":"pulsowanie",
+ "pulses":"pulsowanie","puppy":"szczeniak","push":"wypychanie","pushdown":"prostowanie na wyciągu","pyramid":"piramida",
+ "quad":"czworogłowy uda","rack":"podwyższenie","raise":"unoszenie","raises":"unoszenia","rdl":"martwy ciąg rumuński",
+ "rear":"tylny","reclined":"w leżeniu","renegade":"renegata","reverse":"odwrotny","revolved":"skręcony",
+ "ring":"kółka gimnastyczne","rings":"kółka gimnastyczne","rock":"kołysanie","roll":"rolowanie","roller":"wałek",
+ "rollout":"rozwijanie","romanian":"rumuński","rope":"lina","ropes":"liny","rotation":"rotacja","rotational":"z rotacją",
+ "row":"wiosłowanie","rowing":"wiosłowanie","running":"bieg","russian":"rosyjski","sandbag":"worek treningowy","saw":"piła",
+ "scapular":"łopatkowe","scissor":"nożyce","seated":"siedząc","shoulder":"barki","shoulderstand":"świeca",
+ "shrimp":"krewetka","shrug":"szrugsy","side":"bokiem","single":"jednonóż","sit":"siad","six":"sześć",
+ "skierg":"ergometr narciarski","skull":"francuskie","slam":"uderzenie","sled":"sanie","smith":"Smitha","snatch":"rwanie",
+ "somersault":"przewrót","sphinx":"sfinks","spider":"pająk","spiderman":"Spiderman","spinal":"kręgosłupa",
+ "spine":"kręgosłup","split":"wykroczny","squat":"przysiad","stability":"stabilizacyjna","stair":"schody",
+ "stance":"ustawienie stóp","stand":"stanie","standing":"stojąc","stationary":"stacjonarny","step":"wejście",
+ "stiff":"na prostych nogach","straddle":"w rozkroku","straight":"prosty","stretch":"rozciąganie","strict":"ścisłe",
+ "suitcase":"walizkowy","sumo":"sumo","superman":"superman","supine":"w leżeniu na plecach","support":"podpór",
+ "supported":"z podparciem","svend":"Svenda","swing":"wymach","switch":"zmiana","tabletop":"stolik","tandem":"tandemowe",
+ "terminal":"końcowy","thoracic":"piersiowy","thread":"przeplatanie","three":"trzy","through":"przez","throw":"rzut",
+ "thrust":"wypychanie bioder","thruster":"przysiad z wyciskaniem","tibialis":"mięsień piszczelowy","toe":"palce",
+ "toes":"palce stóp","torso":"tułów","touches":"dotykanie","trainer":"trenażer","treadmill":"bieżnia","tree":"drzewo",
+ "triangle":"trójkąt","tricep":"triceps","triceps":"triceps","trx":"TRX","tuck":"podciągnięcie kolan","turkish":"turecki",
+ "twist":"skręt","twists":"skręty","upright":"wzdłuż tułowia","ups":"w górę","upward":"z głową w górę","walk":"marsz",
+ "walking":"w marszu","wall":"przy ścianie","warrior":"wojownik","weighted":"z obciążeniem","wheel":"kółko","wide":"szeroki",
+ "windmill":"wiatrak","windmills":"wiatraki","windshield":"wycieraczki","wipers":"wycieraczki","wrist":"nadgarstek",
+ "worlds":"świata","zercher":"Zerchera","zottman":"Zottmana"
+};
+const PL_KEEP_WORDS = new Set(["arnold","copenhagen","jefferson","pallof","pendlay","spoto","goblet","planche"]);
+function repdbName(ex){
+ const key=normalizeExerciseName(ex.name_en);
+ if(PL_EXERCISE_NAMES[key])return PL_EXERCISE_NAMES[key];
+ const exact={"90 90 hold":"Utrzymanie pozycji 90/90","90 90 switch":"Zmiana pozycji 90/90","ab wheel rollout":"Rozwijanie kółka do ćwiczeń brzucha","barbell bench press":"Wyciskanie sztangi leżąc","machine chest press":"Wyciskanie na maszynie na klatkę piersiową","dumbbell fly":"Rozpiętki z hantlami","incline dumbbell press":"Wyciskanie hantli na ławce skośnej dodatniej","lat pulldown":"Ściąganie drążka wyciągu górnego","seated cable row":"Wiosłowanie na wyciągu siedząc","cable face pull":"Przyciąganie linek wyciągu do twarzy","clean and jerk":"Podrzut","worlds greatest stretch":"Rozciąganie całego ciała","machine assisted dips":"Pompki na poręczach z asystą maszyny","assisted pull ups":"Podciąganie z asystą","band assisted pull ups":"Podciąganie z pomocą gumy oporowej","barbell deadlift":"Martwy ciąg ze sztangą","barbell back squat":"Przysiad ze sztangą na plecach","barbell overhead press":"Wyciskanie sztangi nad głowę","dumbbell shoulder press":"Wyciskanie hantli nad głowę","dumbbell lateral raise":"Unoszenie hantli bokiem","bicycle crunch":"Spięcia brzucha z naprzemiennym ruchem nóg","reverse crunches":"Odwrotne spięcia brzucha","hanging leg raise":"Unoszenie nóg w zwisie","mountain climbers":"Bieg w podporze","jumping jacks":"Pajacyki","walking lunge":"Wykroki w marszu","reverse lunge":"Wykroki w tył","side plank":"Deska bokiem","downward facing dog":"Pies z głową w dół","upward facing dog":"Pies z głową w górę","childs pose":"Pozycja dziecka","farmers walk":"Spacer farmera","barbell hip thrust":"Wypychanie bioder ze sztangą","lying leg curl":"Uginanie nóg leżąc","leg extension":"Prostowanie nóg na maszynie","leg press":"Wypychanie ciężaru na suwnicy","standing calf raise":"Wspięcia na palce stojąc","seated calf raise":"Wspięcia na palce siedząc","push ups":"Pompki","push up":"Pompka","pull ups":"Podciąganie na drążku","pull up":"Podciąganie na drążku","chin ups":"Podciąganie podchwytem","chin up":"Podciąganie podchwytem","chest dips":"Pompki na poręczach","bench dips":"Pompki w podporze tyłem","diamond push ups":"Pompki diamentowe","wide grip push ups":"Pompki szerokie","close grip push ups":"Pompki wąskim rozstawem dłoni","pike push ups":"Pompki szczupakowe","handstand push ups":"Pompki w staniu na rękach","box jump":"Wskoki na skrzynię","jump rope":"Skakanie na skakance","rowing machine":"Wiosłowanie na ergometrze","elliptical trainer":"Trening na orbitreku","stationary bike":"Jazda na rowerze stacjonarnym","treadmill running":"Bieg na bieżni","cat cow":"Koci grzbiet i pozycja krowy","bird dog":"Naprzemienne unoszenie ręki i nogi w klęku podpartym","dead bug":"Martwy robak","glute bridge":"Most biodrowy","fire hydrant":"Odwodzenie nogi w klęku podpartym","good morning":"Dzień dobry","face pull":"Przyciąganie linki do twarzy","pallof press":"Wyciskanie Pallofa","svend press":"Wyciskanie Svenda","push press":"Wyciskopodrzut","push jerk":"Podrzut siłowy","rack pull":"Martwy ciąg z podwyższenia","kettlebell swing":"Wymach kettlebell","turkish get ups":"Wstawanie tureckie z kettlebell","captains chair knee raise":"Unoszenie kolan na poręczach","captains chair leg raise":"Unoszenie nóg na poręczach","stability ball leg curl":"Uginanie nóg na piłce gimnastycznej","stability ball push up":"Pompki z rękami na piłce gimnastycznej","wall sit":"Przysiad izometryczny przy ścianie","high plank":"Deska na wyprostowanych rękach","reverse plank":"Odwrotna deska","hollow body hold":"Utrzymanie pozycji hollow body","six inch hold":"Utrzymanie nóg 15 cm nad podłożem"};
+ if(exact[key])return exact[key];
+ const words=key.split(" ").map(w=>PL_NAME_WORDS[w]||(PL_KEEP_WORDS.has(w)?w.toUpperCase():w));
+ const result=words.join(" ").replace(/\s+/g," ").trim();
+ return result.charAt(0).toLocaleUpperCase("pl")+result.slice(1);
+}
 function repdbImage(path){if(!path)return "";return /^https?:\/\//i.test(path)?path:new URL(path,REPDB_IMAGE_BASE).href}
 function repdbImages(ex){const f=ex.images?.flat||{};return [repdbImage(f.start||f.main||f.peak),repdbImage(f.peak||f.main||f.start)].filter(Boolean)}
 function openExerciseLibrary(){
@@ -283,7 +381,7 @@ function renderLibraryResults(){
  $("libraryResults").innerHTML=results.length?results.map(ex=>{
   const imgs=repdbImages(ex),name=repdbName(ex),bodyName=PL_BODY[ex.body_part]||ex.body_part||"",equipment=PL_EQUIPMENT[ex.equipment]||ex.equipment||"bez sprzętu";
   const pics=imgs.length?imgs.map(src=>'<img src="'+esc(src)+'" alt="" loading="lazy" style="width:44px;height:64px;object-fit:contain;border-radius:8px;background:#292d35">').join(""):'<div class="photo placeholder" style="width:90px;height:64px">—</div>';
-  return '<div class="exercise" style="display:flex;gap:10px;align-items:center;padding:10px"><div style="display:flex;gap:3px;flex:0 0 92px">'+pics+'</div><div style="flex:1;min-width:0"><div class="ex-title">'+esc(name)+'</div>'+(name!==ex.name_en?'<div class="meta">'+esc(ex.name_en)+'</div>':'')+'<div class="meta">'+esc(bodyName)+' · '+esc(equipment)+'</div></div><button class="btn small" type="button" data-repdb-add="'+esc(ex.id)+'">Dodaj</button></div>';
+  return '<div class="exercise" style="display:flex;gap:10px;align-items:center;padding:10px"><div style="display:flex;gap:3px;flex:0 0 92px">'+pics+'</div><div style="flex:1;min-width:0"><div class="ex-title">'+esc(name)+'</div>'++'<div class="meta">'+esc(bodyName)+' · '+esc(equipment)+'</div></div><button class="btn small" type="button" data-repdb-add="'+esc(ex.id)+'">Dodaj</button></div>';
  }).join(""):'<div class="empty">Brak wyników. Zmień wyszukiwaną nazwę lub partię mięśniową.</div>';
  document.querySelectorAll("[data-repdb-add]").forEach(btn=>btn.onclick=()=>{
   const ex=exerciseLibrary.find(x=>x.id===btn.dataset.repdbAdd);if(!ex)return;
