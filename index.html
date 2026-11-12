@@ -88,7 +88,7 @@ h1{font-size:29px;letter-spacing:-1px;margin:8px 0 6px}h2{font-size:21px;letter-
   <div id="workoutList" class="grid"></div>
  </section>
  <section id="detailView" class="hidden">
-  <button id="backBtn" class="back">← Wszystkie treningi</button>
+  <button id="backBtn" class="back">← COFNIJ</button>
   <div class="row between" style="margin:8px 0 4px"><div><h1 id="workoutTitle">Trening</h1><p id="exerciseCount" class="sub"></p></div><button id="editWorkoutBtn" class="btn secondary small">Edytuj</button></div>
   <div id="exerciseList"></div>
  </section>
@@ -210,7 +210,77 @@ function moveExercise(id,delta){const w=getWorkout(),i=w.exercises.findIndex(e=>
 $("backBtn").onclick=()=>{activeWorkout=null;selectedForSuperset.clear();renderHome()};
 $("addWorkoutBtn").onclick=()=>openModal("Nowy trening",`<div class="field"><label>Nazwa treningu</label><input id="workoutName" placeholder="np. Klatka piersiowa"></div>`,async()=>{const name=$("workoutName").value.trim();if(!name)return;state.workouts.push({id:uid(),name,exercises:[]});scheduleSave();renderHome()});
 $("editWorkoutBtn").onclick=()=>{const w=getWorkout();openModal("Edytuj trening",`<div class="field"><label>Nazwa treningu</label><input id="workoutName" value="${esc(w.name)}"></div><button id="deleteWorkout" class="btn danger full small" type="button">Usuń cały trening</button>`,async()=>{const name=$("workoutName").value.trim();if(name)w.name=name;scheduleSave();renderDetail()});setTimeout(()=>{const b=$("deleteWorkout");if(b)b.onclick=()=>{if(confirm("Usunąć cały trening i jego ćwiczenia?")){state.workouts=state.workouts.filter(x=>x.id!==activeWorkout);activeWorkout=null;closeModal();scheduleSave();renderHome()}}},0)};
-$("addExerciseBtn").onclick=()=>editExercise(null);
+
+let exerciseLibrary = [];
+let libraryLoaded = false;
+function openExerciseLibrary(){
+  $("modalTitle").textContent="Biblioteka ćwiczeń";
+  $("modalBody").innerHTML=`
+    <div class="field"><label>Szukaj ćwiczenia</label><input id="librarySearch" placeholder="np. wyciskanie, pompki, przysiad"></div>
+    <p class="smallmuted" id="libraryStatus">Pobieranie ćwiczeń z bezpłatnej bazy wger…</p>
+    <div id="libraryResults"></div>
+    <div class="notice">Baza wger jest udostępniana na otwartej licencji. Zdjęcia są dostępne tylko dla części ćwiczeń; ich licencja i autor mogą się różnić.</div>
+    <button id="manualExerciseBtn" class="btn secondary full" type="button">＋ Dodaj ćwiczenie ręcznie</button>`;
+  modalSave=null;
+  $("modal").classList.add("show");
+  $("modal").classList.add("library-mode");
+  $("saveModal").classList.add("hidden");
+  $("cancelModal").textContent="Zamknij";
+  $("librarySearch").addEventListener("input",renderLibraryResults);
+  $("manualExerciseBtn").onclick=()=>{closeModal();editExercise(null)};
+  if(libraryLoaded){$("libraryStatus").textContent="Wpisz nazwę lub wybierz ćwiczenie.";renderLibraryResults();return}
+  fetch("https://wger.de/api/v2/exerciseinfo/?limit=500")
+    .then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json()})
+    .then(data=>{
+      exerciseLibrary=data.results||[];
+      libraryLoaded=true;
+      $("libraryStatus").textContent="Znaleziono "+(data.count||exerciseLibrary.length)+" ćwiczeń. Wyszukaj nazwę.";
+      renderLibraryResults();
+    })
+    .catch(err=>{$("libraryStatus").textContent="Nie udało się pobrać bazy ćwiczeń ("+err.message+"). Możesz dodać ćwiczenie ręcznie.";});
+}
+function getLibraryTranslation(item){
+  const translations=item.translations||[];
+  return translations.find(t=>String(t.language_name||t.language||"").toLowerCase().includes("pol")) ||
+         translations.find(t=>String(t.language_name||t.language||"").toLowerCase().includes("english")) ||
+         translations[0] || {};
+}
+function renderLibraryResults(){
+  const q=$("librarySearch").value.trim().toLocaleLowerCase("pl");
+  const results=exerciseLibrary.filter(item=>{
+    const t=getLibraryTranslation(item);
+    return !q || String(t.name||"").toLocaleLowerCase("pl").includes(q) ||
+      String(t.description||"").replace(/<[^>]*>/g," ").toLocaleLowerCase("pl").includes(q);
+  }).slice(0,60);
+  $("libraryResults").innerHTML=results.length?results.map(item=>{
+    const t=getLibraryTranslation(item);
+    const name=t.name||"Ćwiczenie "+item.id;
+    const img=(item.images||[]).find(x=>x.image)?.image||"";
+    const muscles=(item.muscles||[]).map(m=>m.name).filter(Boolean).join(", ");
+    return `<div class="exercise" style="display:flex;gap:12px;align-items:center">
+      ${img?`<img class="photo" src="${esc(img)}" alt="" loading="lazy" style="width:76px;height:70px;flex-basis:76px">`:`<div class="photo placeholder" style="width:76px;height:70px;flex-basis:76px">＋</div>`}
+      <div style="flex:1;min-width:0"><div class="ex-title">${esc(name)}</div><div class="meta">${esc(muscles||"Brak danych o mięśniach")}</div><div class="meta">Źródło: wger</div></div>
+      <button class="btn small" type="button" data-library-add="${item.id}">Dodaj</button>
+    </div>`;
+  }).join(""):`<div class="empty">Brak wyników. Spróbuj innej nazwy lub dodaj ćwiczenie ręcznie.</div>`;
+  document.querySelectorAll("[data-library-add]").forEach(btn=>btn.onclick=()=>{
+    const item=exerciseLibrary.find(x=>String(x.id)===btn.dataset.libraryAdd);
+    if(!item)return;
+    const t=getLibraryTranslation(item);
+    const image=(item.images||[]).find(x=>x.image)?.image||"";
+    getWorkout().exercises.push({id:uid(),name:t.name||("Ćwiczenie "+item.id),weight:"",reps:"",sets:"3",comment:"",image,superset:null});
+    scheduleSave();closeModal();renderDetail();
+  });
+}
+const originalCloseModal=closeModal;
+closeModal=function(){
+  $("modal").classList.remove("library-mode");
+  $("saveModal").classList.remove("hidden");
+  $("cancelModal").textContent="Anuluj";
+  originalCloseModal();
+};
+$("addExerciseBtn").onclick=()=>openExerciseLibrary();
+
 function editExercise(id){
  const w=getWorkout(),e=id?w.exercises.find(x=>x.id===id):{name:"",weight:"",reps:"",sets:"3",comment:"",image:""};
  openModal(id?"Edytuj ćwiczenie":"Dodaj ćwiczenie",`
