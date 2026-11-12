@@ -92,6 +92,7 @@ h1{font-size:29px;letter-spacing:-1px;margin:8px 0 6px}h2{font-size:21px;letter-
   <div class="row between" style="margin:8px 0 4px"><div><h1 id="workoutTitle">Trening</h1><p id="exerciseCount" class="sub"></p></div><button id="editWorkoutBtn" class="btn secondary small">Edytuj</button></div>
   <div id="exerciseList"></div>
  </section>
+ <p class="smallmuted" style="text-align:center;margin-top:26px">Exercise data by <a href="https://repdb.co" target="_blank" rel="noopener noreferrer">RepDB (repdb.co)</a></p>
 </main>
 <div id="homeActions" class="bottom hidden"><div class="bottom-inner"><button id="addWorkoutBtn" class="btn full">＋ Dodaj trening</button></div></div>
 <div id="detailActions" class="bottom hidden"><div class="bottom-inner"><button id="addExerciseBtn" class="btn full">＋ Dodaj ćwiczenie</button><button id="supersetBtn" class="btn secondary">⇄ Superseria</button></div></div>
@@ -183,7 +184,7 @@ function renderDetail(){
 }
 function exerciseCard(e,w){
  const i=w.exercises.findIndex(x=>x.id===e.id);
- const photo=e.image?`<img class="photo" src="${esc(e.image)}" alt="${esc(e.name)}" onerror="this.style.display='none'">`:`<div class="photo placeholder">＋</div>`;
+ const photo=e.image?`<div style="${e.image2?"display:flex;gap:3px;width:100px;flex:0 0 100px;":""}"><img class="photo" src="${esc(e.image)}" alt="${esc(e.name)}" onerror="this.style.display='none'" style="${e.image2?"width:48px;flex:1;min-width:0;":""}">${e.image2?`<img class="photo" src="${esc(e.image2)}" alt="" loading="lazy" style="width:48px;flex:1;min-width:0">`:""}</div>`:`<div class="photo placeholder">＋</div>`;
  return `<article class="exercise" data-card="${e.id}">
   <div class="exercise-head">${photo}<div style="flex:1;min-width:0"><div class="ex-title">${i+1}. ${esc(e.name)}</div><div class="meta">${e.superset?"Ćwiczenie w superserii":"Ćwiczenie"}</div><div class="meta" style="margin-top:7px"><label><input type="checkbox" data-select="${e.id}" ${selectedForSuperset.has(e.id)?"checked":""}> Zaznacz do superserii</label></div></div></div>
   <div class="metrics">
@@ -213,82 +214,84 @@ $("editWorkoutBtn").onclick=()=>{const w=getWorkout();openModal("Edytuj trening"
 
 let exerciseLibrary = [];
 let libraryLoaded = false;
-let polishLanguageId = null;
+let libraryLoading = false;
+const REPDB_DATA_URL = "https://exercise-dataset.com/exercises.json";
+const REPDB_IMAGE_BASE = "https://exercise-dataset.com/";
+const PL_EXERCISE_NAMES = {
+ "barbell bench press":"Wyciskanie sztangi leżąc","dumbbell bench press":"Wyciskanie hantli leżąc",
+ "incline dumbbell press":"Wyciskanie hantli na ławce skośnej dodatniej","incline barbell bench press":"Wyciskanie sztangi na ławce skośnej dodatniej",
+ "decline barbell bench press":"Wyciskanie sztangi na ławce skośnej ujemnej","dumbbell fly":"Rozpiętki z hantlami",
+ "incline dumbbell fly":"Rozpiętki z hantlami na ławce skośnej","cable chest fly":"Rozpiętki na bramie",
+ "push up":"Pompki","wide push up":"Pompki szerokie","diamond push up":"Pompki diamentowe",
+ "pull up":"Podciąganie na drążku","chin up":"Podciąganie podchwytem","lat pulldown":"Ściąganie drążka wyciągu górnego",
+ "seated cable row":"Wiosłowanie na wyciągu siedząc","bent over barbell row":"Wiosłowanie sztangą w opadzie tułowia",
+ "one arm dumbbell row":"Wiosłowanie hantlem jednorącz","dumbbell row":"Wiosłowanie hantlem","barbell row":"Wiosłowanie sztangą",
+ "t bar row":"Wiosłowanie na maszynie T-bar","deadlift":"Martwy ciąg","barbell deadlift":"Martwy ciąg ze sztangą",
+ "romanian deadlift":"Martwy ciąg rumuński","sumo deadlift":"Martwy ciąg sumo","dumbbell romanian deadlift":"Martwy ciąg rumuński z hantlami",
+ "barbell squat":"Przysiad ze sztangą","back squat":"Przysiad ze sztangą na plecach","front squat":"Przysiad przedni ze sztangą",
+ "goblet squat":"Przysiad goblet","bulgarian split squat":"Przysiad bułgarski","leg press":"Wypychanie ciężaru na suwnicy",
+ "leg extension":"Prostowanie nóg na maszynie","lying leg curl":"Uginanie nóg leżąc","seated leg curl":"Uginanie nóg siedząc",
+ "calf raise":"Wspięcia na palce","standing calf raise":"Wspięcia na palce stojąc","hip thrust":"Unoszenie bioder ze sztangą",
+ "glute bridge":"Most biodrowy","dumbbell lateral raise":"Unoszenie hantli bokiem","lateral raise":"Unoszenie ramion bokiem",
+ "front raise":"Unoszenie hantli przodem","overhead press":"Wyciskanie żołnierskie","barbell overhead press":"Wyciskanie sztangi nad głowę",
+ "dumbbell shoulder press":"Wyciskanie hantli nad głowę","arnold press":"Wyciskanie Arnolda","face pull":"Przyciąganie linki wyciągu do twarzy",
+ "barbell shrug":"Szrugsy ze sztangą","dumbbell shrug":"Szrugsy z hantlami","barbell curl":"Uginanie ramion ze sztangą",
+ "dumbbell curl":"Uginanie ramion z hantlami","hammer curl":"Uginanie młotkowe","preacher curl":"Uginanie ramion na modlitewniku",
+ "concentration curl":"Uginanie ramienia w podporze","triceps pushdown":"Prostowanie ramion na wyciągu",
+ "triceps rope pushdown":"Prostowanie ramion z linką wyciągu","overhead triceps extension":"Prostowanie ramion nad głową",
+ "skull crusher":"Wyciskanie francuskie leżąc","close grip bench press":"Wyciskanie sztangi wąskim chwytem",
+ "plank":"Deska","side plank":"Deska bokiem","crunch":"Spięcia brzucha","bicycle crunch":"Rowerki",
+ "reverse crunch":"Odwrotne spięcia brzucha","hanging leg raise":"Unoszenie nóg w zwisie","leg raise":"Unoszenie nóg",
+ "cable crunch":"Spięcia brzucha na wyciągu","russian twist":"Skręty tułowia rosyjskie","mountain climber":"Bieg w podporze",
+ "burpee":"Burpees","jumping jack":"Pajacyki","walking lunge":"Wykroki w marszu","lunge":"Wykroki",
+ "reverse lunge":"Wykroki w tył","step up":"Wejścia na podwyższenie","hip abduction":"Odwodzenie nóg",
+ "hip adduction":"Przywodzenie nóg","back extension":"Prostowanie tułowia na ławce","hyperextension":"Prostowanie tułowia na ławce rzymskiej"
+};
+const PL_EQUIPMENT = {"barbell":"sztanga","dumbbell":"hantle","bodyweight":"masa własnego ciała","cable":"wyciąg","machine":"maszyna","kettlebell":"kettlebell","resistance band":"guma oporowa","bench":"ławka","pull up bar":"drążek","smith machine":"maszyna Smitha","ez bar":"gryf łamany","none":"bez sprzętu"};
+const PL_BODY = {"chest":"klatka piersiowa","back":"plecy","shoulders":"barki","upper arms":"ramiona","lower arms":"przedramiona","upper legs":"uda","lower legs":"łydki","waist":"brzuch","glutes":"pośladki","cardio":"kondycyjne","neck":"kark"};
+function normalizeExerciseName(v){return String(v||"").toLowerCase().replace(/[’']/g,"").replace(/[^a-z0-9]+/g," ").trim()}
+function repdbName(ex){return PL_EXERCISE_NAMES[normalizeExerciseName(ex.name_en)]||ex.name_en||"Ćwiczenie"}
+function repdbImage(path){if(!path)return "";return /^https?:\/\//i.test(path)?path:new URL(path,REPDB_IMAGE_BASE).href}
+function repdbImages(ex){const f=ex.images?.flat||{};return [repdbImage(f.start||f.main||f.peak),repdbImage(f.peak||f.main||f.start)].filter(Boolean)}
 function openExerciseLibrary(){
-  $("modalTitle").textContent="Biblioteka ćwiczeń";
-  $("modalBody").innerHTML=`
-    <div class="field"><label>Szukaj ćwiczenia</label><input id="librarySearch" placeholder="np. wyciskanie, pompki, przysiad"></div>
-    <p class="smallmuted" id="libraryStatus">Pobieranie ćwiczeń z bezpłatnej bazy wger…</p>
-    <div id="libraryResults"></div>
-    <div class="notice">Baza wger jest udostępniana na otwartej licencji. Zdjęcia są dostępne tylko dla części ćwiczeń; ich licencja i autor mogą się różnić.</div>
-    <button id="manualExerciseBtn" class="btn secondary full" type="button">＋ Dodaj ćwiczenie ręcznie</button>`;
-  modalSave=null;
-  $("modal").classList.add("show");
-  $("modal").classList.add("library-mode");
-  $("saveModal").classList.add("hidden");
-  $("cancelModal").textContent="Zamknij";
-  $("librarySearch").addEventListener("input",renderLibraryResults);
+  $("modalTitle").textContent="Biblioteka ćwiczeń RepDB";
+  $("modalBody").innerHTML='<div class="field"><label>Szukaj ćwiczenia po polsku lub angielsku</label><input id="librarySearch" placeholder="np. wyciskanie, pompki, przysiad"></div><div class="field"><label>Partia mięśniowa</label><select id="libraryBody"><option value="">Wszystkie partie</option></select></div><p class="smallmuted" id="libraryStatus">Ładowanie katalogu ćwiczeń…</p><div id="libraryResults"></div><div class="notice">Darmowa baza RepDB zawiera ilustracje w dwóch pozycjach, ale nie animacje. Nazwy najpopularniejszych ćwiczeń są przetłumaczone na polski; pozostałe pozostają po angielsku.</div><p class="smallmuted">Exercise data by <a href="https://repdb.co" target="_blank" rel="noopener noreferrer">RepDB (repdb.co)</a>.</p><button id="manualExerciseBtn" class="btn secondary full" type="button">＋ Dodaj ćwiczenie ręcznie</button>';
+  modalSave=null;$("modal").classList.add("show","library-mode");$("saveModal").classList.add("hidden");$("cancelModal").textContent="Zamknij";
+  $("librarySearch").addEventListener("input",renderLibraryResults);$("libraryBody").addEventListener("change",renderLibraryResults);
   $("manualExerciseBtn").onclick=()=>{closeModal();editExercise(null)};
-  if(libraryLoaded){$("libraryStatus").textContent="Wpisz nazwę lub wybierz ćwiczenie.";renderLibraryResults();return}
-  Promise.all([
-    fetch("https://wger.de/api/v2/exerciseinfo/?limit=500&format=json").then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}),
-    fetch("https://wger.de/api/v2/language/?limit=100&format=json").then(r=>r.ok?r.json():{results:[]}).catch(()=>({results:[]}))
-  ]).then(([data,languages])=>{
-      const pl=(languages.results||[]).find(x=>String(x.short_name||"").toLowerCase()==="pl" || String(x.full_name||"").toLowerCase()==="polish");
-      polishLanguageId=pl?.id??null;
-      exerciseLibrary=data.results||[];
-      libraryLoaded=true;
-      $("libraryStatus").textContent="Znaleziono "+(data.count||exerciseLibrary.length)+" ćwiczeń. Wyszukaj nazwę.";
-      renderLibraryResults();
-    })
-    .catch(err=>{$("libraryStatus").textContent="Nie udało się pobrać bazy ćwiczeń ("+err.message+"). Możesz dodać ćwiczenie ręcznie.";});
+  if(libraryLoaded){$("libraryStatus").textContent="Załadowano "+exerciseLibrary.length+" ćwiczeń.";populateRepdbFilters();renderLibraryResults();return}
+  if(libraryLoading){$("libraryStatus").textContent="Katalog jest pobierany…";return}
+  libraryLoading=true;
+  fetch(REPDB_DATA_URL,{cache:"force-cache"}).then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}).then(data=>{
+    if(!Array.isArray(data.exercises))throw new Error("Nieprawidłowy format katalogu");
+    exerciseLibrary=data.exercises;libraryLoaded=true;libraryLoading=false;
+    $("libraryStatus").textContent="Załadowano "+exerciseLibrary.length+" ćwiczeń.";populateRepdbFilters();renderLibraryResults();
+  }).catch(err=>{libraryLoading=false;$("libraryStatus").textContent="Nie udało się pobrać katalogu ("+err.message+"). Spróbuj ponownie za chwilę."});
 }
-function getLibraryTranslation(item){
-  const translations=item.translations||[];
-  const code=t=>String(t.language?.short_name||t.language?.code||t.language_code||"").toLowerCase();
-  const id=t=>Number(t.language?.id??t.language);
-  return translations.find(t=>code(t)==="pl" || (polishLanguageId!==null && id(t)===Number(polishLanguageId))) ||
-         translations.find(t=>code(t)==="en" || id(t)===2) || translations[0] || {};
-}
-function getLibraryImage(item){
-  const imgs=(item.images||[]).filter(x=>x.image);
-  // Prefer photographs and 3D demonstrations; skip line-art contours.
-  return (imgs.find(x=>Number(x.style)===4) || imgs.find(x=>Number(x.style)!==1) || null)?.image || "";
+function populateRepdbFilters(){
+ const values=[...new Set(exerciseLibrary.map(x=>x.body_part).filter(Boolean))].sort();
+ $("libraryBody").innerHTML='<option value="">Wszystkie partie</option>'+values.map(v=>'<option value="'+esc(v)+'">'+esc(PL_BODY[v]||v)+'</option>').join("");
 }
 function renderLibraryResults(){
-  const q=$("librarySearch").value.trim().toLocaleLowerCase("pl");
-  const results=exerciseLibrary.filter(item=>{
-    const t=getLibraryTranslation(item);
-    return !q || String(t.name||"").toLocaleLowerCase("pl").includes(q) ||
-      String(t.description||"").replace(/<[^>]*>/g," ").toLocaleLowerCase("pl").includes(q);
-  }).slice(0,60);
-  $("libraryResults").innerHTML=results.length?results.map(item=>{
-    const t=getLibraryTranslation(item);
-    const name=t.name||"Ćwiczenie "+item.id;
-    const img=getLibraryImage(item);
-    const muscles=(item.muscles||[]).map(m=>m.name).filter(Boolean).join(", ");
-    return `<div class="exercise" style="display:flex;gap:12px;align-items:center">
-      ${img?`<img class="photo" src="${esc(img)}" alt="" loading="lazy" style="width:76px;height:70px;flex-basis:76px">`:`<div class="photo placeholder" style="width:76px;height:70px;flex-basis:76px;font-size:11px">Brak zdjęcia</div>`}
-      <div style="flex:1;min-width:0"><div class="ex-title">${esc(name)}</div><div class="meta">${esc(muscles||"Brak danych o mięśniach")}</div><div class="meta">Źródło: wger</div></div>
-      <button class="btn small" type="button" data-library-add="${item.id}">Dodaj</button>
-    </div>`;
-  }).join(""):`<div class="empty">Brak wyników. Spróbuj innej nazwy lub dodaj ćwiczenie ręcznie.</div>`;
-  document.querySelectorAll("[data-library-add]").forEach(btn=>btn.onclick=()=>{
-    const item=exerciseLibrary.find(x=>String(x.id)===btn.dataset.libraryAdd);
-    if(!item)return;
-    const t=getLibraryTranslation(item);
-    const image=getLibraryImage(item);
-    getWorkout().exercises.push({id:uid(),name:t.name||("Ćwiczenie "+item.id),weight:"",reps:"",sets:"3",comment:"",image,superset:null});
-    scheduleSave();closeModal();renderDetail();
-  });
+ if(!libraryLoaded)return;
+ const q=normalizeExerciseName($("librarySearch").value),body=$("libraryBody").value;
+ const results=exerciseLibrary.filter(ex=>{
+  const name=normalizeExerciseName(repdbName(ex)),en=normalizeExerciseName(ex.name_en),de=normalizeExerciseName(ex.name_de),es=normalizeExerciseName(ex.name_es);
+  return (!body||ex.body_part===body)&&(!q||name.includes(q)||en.includes(q)||de.includes(q)||es.includes(q));
+ }).slice(0,80);
+ $("libraryStatus").textContent="Wyniki: "+results.length+" / "+exerciseLibrary.length+" (maksymalnie 80 na liście).";
+ $("libraryResults").innerHTML=results.length?results.map(ex=>{
+  const imgs=repdbImages(ex),name=repdbName(ex),bodyName=PL_BODY[ex.body_part]||ex.body_part||"",equipment=PL_EQUIPMENT[ex.equipment]||ex.equipment||"bez sprzętu";
+  const pics=imgs.length?imgs.map(src=>'<img src="'+esc(src)+'" alt="" loading="lazy" style="width:44px;height:64px;object-fit:contain;border-radius:8px;background:#292d35">').join(""):'<div class="photo placeholder" style="width:90px;height:64px">—</div>';
+  return '<div class="exercise" style="display:flex;gap:10px;align-items:center;padding:10px"><div style="display:flex;gap:3px;flex:0 0 92px">'+pics+'</div><div style="flex:1;min-width:0"><div class="ex-title">'+esc(name)+'</div>'+(name!==ex.name_en?'<div class="meta">'+esc(ex.name_en)+'</div>':'')+'<div class="meta">'+esc(bodyName)+' · '+esc(equipment)+'</div></div><button class="btn small" type="button" data-repdb-add="'+esc(ex.id)+'">Dodaj</button></div>';
+ }).join(""):'<div class="empty">Brak wyników. Zmień wyszukiwaną nazwę lub partię mięśniową.</div>';
+ document.querySelectorAll("[data-repdb-add]").forEach(btn=>btn.onclick=()=>{
+  const ex=exerciseLibrary.find(x=>x.id===btn.dataset.repdbAdd);if(!ex)return;
+  const imgs=repdbImages(ex),name=repdbName(ex);
+  getWorkout().exercises.push({id:uid(),name,weight:"",reps:"",sets:"3",comment:"",image:imgs[0]||"",image2:imgs[1]||"",repdbId:ex.id,source:"RepDB",superset:null});
+  scheduleSave();closeModal();renderDetail();
+ });
 }
-const originalCloseModal=closeModal;
-closeModal=function(){
-  $("modal").classList.remove("library-mode");
-  $("saveModal").classList.remove("hidden");
-  $("cancelModal").textContent="Anuluj";
-  originalCloseModal();
-};
 $("addExerciseBtn").onclick=()=>openExerciseLibrary();
 
 function editExercise(id){
