@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101114">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="My Workout">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<title>My Workout</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{color-scheme:dark;--bg:#101114;--panel:#191b20;--panel2:#22252c;--line:#30343d;--text:#f4f5f7;--muted:#a1a6b1;--accent:#b6f36b;--danger:#ff7777;--radius:18px}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"DM Sans",system-ui,-apple-system,sans-serif;min-height:100vh}
+button,input,textarea{font:inherit}button{cursor:pointer;border:0}
+header{position:sticky;top:0;z-index:5;background:#101114ed;backdrop-filter:blur(14px);padding:calc(12px + env(safe-area-inset-top)) 18px 12px;border-bottom:1px solid #252830}
+.top{max-width:760px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{font-size:18px;font-weight:800;letter-spacing:-.5px}.brand span{color:var(--accent)}
+.wrap{max-width:760px;margin:auto;padding:22px 16px calc(110px + env(safe-area-inset-bottom))}
+h1{font-size:29px;letter-spacing:-1px;margin:8px 0 6px}h2{font-size:21px;letter-spacing:-.5px;margin:0}
+.sub{color:var(--muted);font-size:13px;margin:0 0 22px}
+.btn{background:var(--accent);color:#141710;border-radius:13px;padding:12px 16px;font-weight:800}
+.btn.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+.btn.ghost{background:transparent;color:var(--muted);padding:9px}
+.btn.danger{background:#3a2225;color:#ff9b9b}
+.btn.small{padding:8px 11px;font-size:13px;border-radius:10px}
+.full{width:100%}.row{display:flex;align-items:center;gap:10px}.between{justify-content:space-between}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.workout{background:linear-gradient(145deg,#20232a,#17191e);border:1px solid var(--line);border-radius:var(--radius);padding:18px;min-height:116px;display:flex;flex-direction:column;justify-content:space-between;gap:16px;text-align:left;color:var(--text)}
+.workout .name{font-size:17px;font-weight:800}.workout .count{font-size:12px;color:var(--muted)}
+.workout .arrow{color:var(--accent);font-size:20px}
+.exercise{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px;margin:12px 0}
+.exercise-head{display:flex;gap:13px;align-items:flex-start}
+.photo{width:100px;height:90px;flex:0 0 100px;border-radius:13px;object-fit:cover;background:#292d35}
+.placeholder{display:flex;align-items:center;justify-content:center;color:#777e8b;font-size:28px}
+.ex-title{font-weight:800;font-size:16px;line-height:1.25;margin:2px 0 6px}
+.meta{font-size:12px;color:var(--muted)}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 10px}
+.metric{background:var(--panel2);border-radius:12px;padding:10px}
+.metric label,.field label{display:block;color:var(--muted);font-size:11px;margin-bottom:6px}
+.metric input{width:100%;background:transparent;border:0;color:var(--text);font-weight:800;font-size:17px;outline:none;padding:0;min-width:0}
+.field{margin:10px 0}.field input,.field textarea{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:11px;color:var(--text);outline:none}
+.field textarea{min-height:66px;resize:vertical}
+.comment{color:#c4c8d0;font-size:13px;margin:10px 2px 0;white-space:pre-wrap}
+.actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.superset{border:1px dashed #829d5c;border-radius:18px;padding:10px;margin:14px 0;background:#b6f36b08}
+.superset-label{color:var(--accent);font-size:12px;font-weight:800;letter-spacing:.5px;padding:2px 4px 5px}
+.empty{border:1px dashed var(--line);border-radius:18px;padding:28px 18px;text-align:center;color:var(--muted);font-size:14px}
+.bottom{position:fixed;bottom:0;left:0;right:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(transparent,#101114 18%);z-index:4}
+.bottom-inner{max-width:760px;margin:auto;display:flex;gap:9px}
+.bottom .btn{flex:1}
+.back{color:var(--muted);background:none;padding:8px 0;font-weight:700}
+.modal{position:fixed;inset:0;background:#000b;z-index:10;display:none;align-items:flex-end;justify-content:center}
+.modal.show{display:flex}.sheet{width:100%;max-width:650px;max-height:92vh;overflow:auto;background:#191b20;border:1px solid var(--line);border-radius:24px 24px 0 0;padding:22px 18px calc(25px + env(safe-area-inset-bottom))}
+.sheet h2{margin-bottom:16px}.sheet-actions{display:flex;gap:8px;margin-top:18px}.sheet-actions>*{flex:1}
+.notice{background:#252a20;color:#c9e9a3;border:1px solid #52643c;border-radius:12px;padding:11px;font-size:12px;margin:14px 0}
+.auth{max-width:420px;margin:10vh auto;padding:24px}.authbox{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:22px}
+.smallmuted{font-size:12px;color:var(--muted);line-height:1.5}
+.hidden{display:none!important}
+.status{font-size:11px;color:var(--muted)}
+@media(min-width:600px){.wrap{padding-top:30px}.modal{align-items:center}.sheet{border-radius:22px}.workout{min-height:140px}}
+</style>
+</head>
+<body>
+<header><div class="top"><div class="brand">MY <span>WORKOUT</span></div><div class="row"><span id="saveStatus" class="status">Niepołączono</span><button id="logoutBtn" class="btn ghost small hidden">Wyloguj</button></div></div></header>
+
+<section id="authView" class="auth">
+ <div class="authbox">
+  <h1>Twój trening.<br><span style="color:var(--accent)">Twoje zasady.</span></h1>
+  <p class="sub">Zaloguj się, aby przechowywać swoje plany online i otwierać je na różnych urządzeniach.</p>
+  <div class="field"><label>Adres e-mail</label><input id="email" type="email" autocomplete="email" placeholder="adres@email.com"></div>
+  <div class="field"><label>Hasło</label><input id="password" type="password" autocomplete="current-password" placeholder="Minimum 6 znaków"></div>
+  <button id="loginBtn" class="btn full">Zaloguj się</button>
+  <button id="signupBtn" class="btn secondary full" style="margin-top:9px">Utwórz konto</button>
+  <p id="authMsg" class="smallmuted" aria-live="polite"></p>
+  <div class="notice">Najpierw skonfiguruj bezpłatny projekt Supabase zgodnie z instrukcją w pliku README.</div>
+ </div>
+</section>
+
+<main id="appView" class="wrap hidden">
+ <section id="homeView">
+  <div class="row between"><div><h1>Moje treningi</h1><p class="sub">Wybierz plan, który chcesz wykonać.</p></div></div>
+  <div id="workoutList" class="grid"></div>
+ </section>
+ <section id="detailView" class="hidden">
+  <button id="backBtn" class="back">← Wszystkie treningi</button>
+  <div class="row between" style="margin:8px 0 4px"><div><h1 id="workoutTitle">Trening</h1><p id="exerciseCount" class="sub"></p></div><button id="editWorkoutBtn" class="btn secondary small">Edytuj</button></div>
+  <div id="exerciseList"></div>
+ </section>
+</main>
+<div id="homeActions" class="bottom hidden"><div class="bottom-inner"><button id="addWorkoutBtn" class="btn full">＋ Dodaj trening</button></div></div>
+<div id="detailActions" class="bottom hidden"><div class="bottom-inner"><button id="addExerciseBtn" class="btn full">＋ Dodaj ćwiczenie</button><button id="supersetBtn" class="btn secondary">⇄ Superseria</button></div></div>
+
+<div id="modal" class="modal"><div class="sheet">
+ <div class="row between"><h2 id="modalTitle">Dodaj</h2><button id="closeModal" class="btn ghost">✕</button></div>
+ <div id="modalBody"></div>
+ <div class="sheet-actions"><button id="cancelModal" class="btn secondary">Anuluj</button><button id="saveModal" class="btn">Zapisz</button></div>
+</div></div>
+
+<script>
+const SUPABASE_URL = "https://xjmyjlqcbpmrojookuau.supabase.co/rest/v1/";
+const SUPABASE_ANON_KEY = "sb_publishable_z-m2Mw6zzBEpUSyndYnWmQ_HJ4UbF60";
+let db = null, user = null, state = {workouts:[]}, activeWorkout = null, modalSave = null, saveTimer = null, selectedForSuperset = new Set();
+
+const $ = id => document.getElementById(id);
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())+Math.random());
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const sample = () => ({workouts:[
+ {id:uid(),name:"Klatka piersiowa",exercises:[
+  {id:uid(),name:"Wyciskanie sztangi na ławce",weight:"60",reps:"10",sets:"3",comment:"",image:"",superset:null},
+  {id:uid(),name:"Wyciskanie hantli na skosie dodatnim",weight:"",reps:"",sets:"3",comment:"",image:"",superset:null}
+ ]},
+ {id:uid(),name:"Plecy",exercises:[
+  {id:uid(),name:"Wiosłowanie hantlem",weight:"",reps:"12",sets:"3",comment:"",image:"",superset:null}
+ ]},
+ {id:uid(),name:"Barki",exercises:[]}
+]});
+
+function setStatus(t){$("saveStatus").textContent=t}
+function showAuth(msg=""){ $("authView").classList.remove("hidden"); $("appView").classList.add("hidden"); $("logoutBtn").classList.add("hidden"); $("authMsg").textContent=msg; $("homeActions").classList.add("hidden"); $("detailActions").classList.add("hidden");}
+function showApp(){ $("authView").classList.add("hidden"); $("appView").classList.remove("hidden"); $("logoutBtn").classList.remove("hidden"); renderHome();}
+function openModal(title,html,onSave){$("modalTitle").textContent=title;$("modalBody").innerHTML=html;modalSave=onSave;$("modal").classList.add("show");}
+function closeModal(){$("modal").classList.remove("show");modalSave=null}
+$("closeModal").onclick=$("cancelModal").onclick=closeModal;
+$("saveModal").onclick=async()=>{if(modalSave){await modalSave();closeModal()}};
+
+async function connect(){
+ if(!window.supabase || SUPABASE_URL.startsWith("WSTAW_")){showAuth("Aplikacja jest przygotowana, ale wymaga wklejenia adresu i klucza projektu Supabase. Instrukcja znajduje się w README.");return}
+ db=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+ const {data:{session}}=await db.auth.getSession();
+ if(session){user=session.user;await loadData();showApp()} else showAuth();
+ db.auth.onAuthStateChange(async(_event,session)=>{if(session){user=session.user;await loadData();showApp()}else{user=null;showAuth()}});
+}
+async function auth(mode){
+ const email=$("email").value.trim(),password=$("password").value;
+ if(!email||password.length<6){$("authMsg").textContent="Wpisz poprawny e-mail i hasło (minimum 6 znaków).";return}
+ $("authMsg").textContent="Łączenie…";
+ const result=mode==="signup"?await db.auth.signUp({email,password}):await db.auth.signInWithPassword({email,password});
+ if(result.error){$("authMsg").textContent=result.error.message;return}
+ if(mode==="signup"&&!result.data.session){$("authMsg").textContent="Konto utworzone. Sprawdź pocztę i potwierdź adres e-mail, a następnie się zaloguj."}
+ else {$("authMsg").textContent="Zalogowano."}
+}
+$("loginBtn").onclick=()=>auth("login");$("signupBtn").onclick=()=>auth("signup");
+$("logoutBtn").onclick=async()=>{await db.auth.signOut();};
+async function loadData(){
+ setStatus("Pobieranie danych…");
+ const {data,error}=await db.from("workout_data").select("data").eq("user_id",user.id).maybeSingle();
+ if(error){setStatus("Błąd pobierania");alert("Nie udało się pobrać danych: "+error.message);return}
+ state=data?.data || sample();
+ if(!data){await persist(true)}
+ setStatus("Zapisano online");
+}
+async function persist(initial=false){
+ if(!db||!user)return;
+ setStatus("Zapisywanie…");
+ const {error}=await db.from("workout_data").upsert({user_id:user.id,data:state,updated_at:new Date().toISOString()},{onConflict:"user_id"});
+ if(error){setStatus("Błąd zapisu");console.error(error);if(!initial)alert("Nie udało się zapisać danych: "+error.message)}
+ else setStatus("Zapisano online");
+}
+function scheduleSave(){clearTimeout(saveTimer);setStatus("Niezapisane zmiany…");saveTimer=setTimeout(()=>persist(),500)}
+function getWorkout(){return state.workouts.find(w=>w.id===activeWorkout)}
+function renderHome(){
+ $("homeView").classList.remove("hidden");$("detailView").classList.add("hidden");$("homeActions").classList.remove("hidden");$("detailActions").classList.add("hidden");
+ $("workoutList").innerHTML=state.workouts.length?state.workouts.map(w=>`<button class="workout" data-open="${w.id}"><div class="row between"><span class="name">${esc(w.name)}</span><span class="arrow">↗</span></div><span class="count">${w.exercises.length} ${w.exercises.length===1?"ćwiczenie":w.exercises.length>=2&&w.exercises.length<=4?"ćwiczenia":"ćwiczeń"}</span></button>`).join(""):`<div class="empty" style="grid-column:1/-1">Nie masz jeszcze treningów.<br>Dodaj pierwszy plan przyciskiem poniżej.</div>`;
+ document.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{activeWorkout=b.dataset.open;renderDetail()});
+}
+function renderDetail(){
+ const w=getWorkout();if(!w){renderHome();return}
+ $("homeView").classList.add("hidden");$("detailView").classList.remove("hidden");$("homeActions").classList.add("hidden");$("detailActions").classList.remove("hidden");
+ $("workoutTitle").textContent=w.name;$("exerciseCount").textContent=`${w.exercises.length} ćwiczeń`;
+ let html="",seen=new Set();
+ w.exercises.forEach((e,i)=>{
+  if(e.superset&&!seen.has(e.superset)){seen.add(e.superset);html+=`<div class="superset"><div class="superset-label">⇄ SUPERSERIA</div>${w.exercises.filter(x=>x.superset===e.superset).map(x=>exerciseCard(x,w)).join("")}</div>`}
+  else if(!e.superset)html+=exerciseCard(e,w);
+ });
+ $("exerciseList").innerHTML=html||`<div class="empty">Ten trening nie ma jeszcze ćwiczeń.<br>Dodaj pierwsze ćwiczenie.</div>`;
+ bindExerciseEvents();
+}
+function exerciseCard(e,w){
+ const i=w.exercises.findIndex(x=>x.id===e.id);
+ const photo=e.image?`<img class="photo" src="${esc(e.image)}" alt="${esc(e.name)}" onerror="this.style.display='none'">`:`<div class="photo placeholder">＋</div>`;
+ return `<article class="exercise" data-card="${e.id}">
+  <div class="exercise-head">${photo}<div style="flex:1;min-width:0"><div class="ex-title">${i+1}. ${esc(e.name)}</div><div class="meta">${e.superset?"Ćwiczenie w superserii":"Ćwiczenie"}</div><div class="meta" style="margin-top:7px"><label><input type="checkbox" data-select="${e.id}" ${selectedForSuperset.has(e.id)?"checked":""}> Zaznacz do superserii</label></div></div></div>
+  <div class="metrics">
+   <div class="metric"><label>Obciążenie (kg)</label><input inputmode="decimal" value="${esc(e.weight)}" data-field="weight" placeholder="—"></div>
+   <div class="metric"><label>Powtórzenia</label><input inputmode="numeric" value="${esc(e.reps)}" data-field="reps" placeholder="—"></div>
+   <div class="metric"><label>Serie</label><input inputmode="numeric" value="${esc(e.sets)}" data-field="sets" placeholder="—"></div>
+  </div>
+  <div class="field" style="margin-bottom:0"><label>Komentarz</label><textarea data-field="comment" placeholder="Dodaj własną notatkę…">${esc(e.comment)}</textarea></div>
+  <div class="actions"><button class="btn secondary small" data-edit="${e.id}">Edytuj ćwiczenie</button><button class="btn secondary small" data-up="${e.id}" ${i===0?"disabled":""}>↑</button><button class="btn secondary small" data-down="${e.id}" ${i===w.exercises.length-1?"disabled":""}>↓</button><button class="btn danger small" data-delete="${e.id}">Usuń</button></div>
+ </article>`;
+}
+function bindExerciseEvents(){
+ document.querySelectorAll("[data-card]").forEach(card=>{
+  const id=card.dataset.card;
+  card.querySelectorAll("[data-field]").forEach(input=>input.addEventListener("input",()=>{const e=getWorkout().exercises.find(x=>x.id===id);e[input.dataset.field]=input.value;scheduleSave()}));
+ });
+ document.querySelectorAll("[data-select]").forEach(x=>x.onchange=()=>{x.checked?selectedForSuperset.add(x.dataset.select):selectedForSuperset.delete(x.dataset.select)});
+ document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>editExercise(b.dataset.edit));
+ document.querySelectorAll("[data-delete]").forEach(b=>b.onclick=()=>{if(confirm("Usunąć to ćwiczenie?")){const w=getWorkout();w.exercises=w.exercises.filter(e=>e.id!==b.dataset.delete);selectedForSuperset.delete(b.dataset.delete);scheduleSave();renderDetail()}});
+ document.querySelectorAll("[data-up]").forEach(b=>b.onclick=()=>moveExercise(b.dataset.up,-1));
+ document.querySelectorAll("[data-down]").forEach(b=>b.onclick=()=>moveExercise(b.dataset.down,1));
+}
+function moveExercise(id,delta){const w=getWorkout(),i=w.exercises.findIndex(e=>e.id===id),j=i+delta;if(j<0||j>=w.exercises.length)return;[w.exercises[i],w.exercises[j]]=[w.exercises[j],w.exercises[i]];scheduleSave();renderDetail()}
+$("backBtn").onclick=()=>{activeWorkout=null;selectedForSuperset.clear();renderHome()};
+$("addWorkoutBtn").onclick=()=>openModal("Nowy trening",`<div class="field"><label>Nazwa treningu</label><input id="workoutName" placeholder="np. Klatka piersiowa"></div>`,async()=>{const name=$("workoutName").value.trim();if(!name)return;state.workouts.push({id:uid(),name,exercises:[]});scheduleSave();renderHome()});
+$("editWorkoutBtn").onclick=()=>{const w=getWorkout();openModal("Edytuj trening",`<div class="field"><label>Nazwa treningu</label><input id="workoutName" value="${esc(w.name)}"></div><button id="deleteWorkout" class="btn danger full small" type="button">Usuń cały trening</button>`,async()=>{const name=$("workoutName").value.trim();if(name)w.name=name;scheduleSave();renderDetail()});setTimeout(()=>{const b=$("deleteWorkout");if(b)b.onclick=()=>{if(confirm("Usunąć cały trening i jego ćwiczenia?")){state.workouts=state.workouts.filter(x=>x.id!==activeWorkout);activeWorkout=null;closeModal();scheduleSave();renderHome()}}},0)};
+$("addExerciseBtn").onclick=()=>editExercise(null);
+function editExercise(id){
+ const w=getWorkout(),e=id?w.exercises.find(x=>x.id===id):{name:"",weight:"",reps:"",sets:"3",comment:"",image:""};
+ openModal(id?"Edytuj ćwiczenie":"Dodaj ćwiczenie",`
+ <div class="field"><label>Nazwa ćwiczenia</label><input id="exName" value="${esc(e.name)}" placeholder="np. Wyciskanie sztangi na ławce"></div>
+ <div class="field"><label>Link do zdjęcia ćwiczenia (opcjonalnie)</label><input id="exImage" value="${esc(e.image||"")}" placeholder="https://…"></div>
+ <div class="smallmuted">Możesz wkleić adres zdjęcia z internetu. Obraz będzie wyświetlany na karcie ćwiczenia.</div>
+ <div class="grid" style="margin-top:12px">
+  <div class="field"><label>Obciążenie (kg)</label><input id="exWeight" inputmode="decimal" value="${esc(e.weight)}"></div>
+  <div class="field"><label>Powtórzenia</label><input id="exReps" inputmode="numeric" value="${esc(e.reps)}"></div>
+ </div>
+ <div class="field"><label>Liczba serii</label><input id="exSets" inputmode="numeric" value="${esc(e.sets)}"></div>
+ <div class="field"><label>Komentarz</label><textarea id="exComment">${esc(e.comment)}</textarea></div>`,
+ async()=>{const name=$("exName").value.trim();if(!name)return;const val={name,image:$("exImage").value.trim(),weight:$("exWeight").value,reps:$("exReps").value,sets:$("exSets").value,comment:$("exComment").value};if(id)Object.assign(e,val);else w.exercises.push({id:uid(),...val,superset:null});scheduleSave();renderDetail()});
+}
+$("supersetBtn").onclick=()=>{
+ const w=getWorkout(),ids=[...selectedForSuperset];
+ if(ids.length<2){alert("Zaznacz co najmniej dwa ćwiczenia.");return}
+ const group=uid(),allInSame=ids.every(id=>w.exercises.find(e=>e.id===id)?.superset && w.exercises.find(e=>e.id===id)?.superset===w.exercises.find(e=>e.id===ids[0])?.superset);
+ ids.forEach(id=>{const e=w.exercises.find(x=>x.id===id);if(e)e.superset=allInSame?null:group});
+ selectedForSuperset.clear();scheduleSave();renderDetail();
+};
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+connect();
+</script>
+</body>
+</html>
