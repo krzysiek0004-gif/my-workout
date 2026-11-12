@@ -381,7 +381,7 @@ function renderLibraryResults(){
  $("libraryResults").innerHTML=results.length?results.map(ex=>{
   const imgs=repdbImages(ex),name=repdbName(ex),bodyName=PL_BODY[ex.body_part]||ex.body_part||"",equipment=PL_EQUIPMENT[ex.equipment]||ex.equipment||"bez sprzętu";
   const pics=imgs.length?imgs.map(src=>'<img src="'+esc(src)+'" alt="" loading="lazy" style="width:44px;height:64px;object-fit:contain;border-radius:8px;background:#292d35">').join(""):'<div class="photo placeholder" style="width:90px;height:64px">—</div>';
-  return '<div class="exercise" style="display:flex;gap:10px;align-items:center;padding:10px"><div style="display:flex;gap:3px;flex:0 0 92px">'+pics+'</div><div style="flex:1;min-width:0"><div class="ex-title">'+esc(name)+'</div>'++'<div class="meta">'+esc(bodyName)+' · '+esc(equipment)+'</div></div><button class="btn small" type="button" data-repdb-add="'+esc(ex.id)+'">Dodaj</button></div>';
+  return '<div class="exercise" style="display:flex;gap:10px;align-items:center;padding:10px"><div style="display:flex;gap:3px;flex:0 0 92px">'+pics+'</div><div style="flex:1;min-width:0"><div class="ex-title">'+esc(name)+'</div>'+'<div class="meta">'+esc(bodyName)+' · '+esc(equipment)+'</div></div><button class="btn small" type="button" data-repdb-add="'+esc(ex.id)+'">Dodaj</button></div>';
  }).join(""):'<div class="empty">Brak wyników. Zmień wyszukiwaną nazwę lub partię mięśniową.</div>';
  document.querySelectorAll("[data-repdb-add]").forEach(btn=>btn.onclick=()=>{
   const ex=exerciseLibrary.find(x=>x.id===btn.dataset.repdbAdd);if(!ex)return;
