@@ -152,10 +152,14 @@ $("logoutBtn").onclick=async()=>{await db.auth.signOut();};
 async function loadData(){
  setStatus("Pobieranie danych…");
  const {data,error}=await db.from("workout_data").select("data").eq("user_id",user.id).maybeSingle();
- if(error){setStatus("Błąd pobierania");alert("Nie udało się pobrać danych: "+error.message);return}
+ if(error){setStatus("Błąd pobierania");alert("Nie udało się pobrać danych z serwera: "+error.message);return false}
  state=data?.data || sample();
- if(!data){await persist(true)}
+ if(!data){
+  const saved=await persist(true);
+  if(!saved){alert("Nie udało się utworzyć zapisu początkowego. Treningi nie zostały zapisane. Sprawdź połączenie i uprawnienia bazy Supabase.");return false}
+ }
  setStatus("Zapisano online");
+ return true;
 }
 async function persist(initial=false){
  if(!db||!user){setStatus("Brak połączenia");if(!initial)alert("Nie jesteś zalogowany. Zaloguj się ponownie, aby zapisać trening.");return false}
