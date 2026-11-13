@@ -94,8 +94,8 @@ h1{font-size:29px;letter-spacing:-1px;margin:8px 0 6px}h2{font-size:21px;letter-
  </section>
  <p class="smallmuted" style="text-align:center;margin-top:26px">Exercise data by <a href="https://repdb.co" target="_blank" rel="noopener noreferrer">RepDB (repdb.co)</a></p>
 </main>
-<div id="homeActions" class="bottom hidden"><div class="bottom-inner"><button id="addWorkoutBtn" class="btn full">＋ Dodaj trening</button></div></div>
-<div id="detailActions" class="bottom hidden"><div class="bottom-inner"><button id="addExerciseBtn" class="btn full">＋ Dodaj ćwiczenie</button><button id="supersetBtn" class="btn secondary">⇄ Superseria</button></div></div>
+<div id="homeActions" class="bottom hidden"><div class="bottom-inner"><button id="addWorkoutBtn" class="btn full">＋ Dodaj trening</button><button id="saveHomeBtn" class="btn secondary">ZAPISZ</button></div></div>
+<div id="detailActions" class="bottom hidden"><div class="bottom-inner"><button id="addExerciseBtn" class="btn full">＋ Dodaj ćwiczenie</button><button id="supersetBtn" class="btn secondary">⇄ Superseria</button><button id="saveDetailBtn" class="btn secondary">ZAPISZ</button></div></div>
 
 <div id="modal" class="modal"><div class="sheet">
  <div class="row between"><h2 id="modalTitle">Dodaj</h2><button id="closeModal" class="btn ghost">✕</button></div>
@@ -157,12 +157,13 @@ async function loadData(){
  setStatus("Zapisano online");
 }
 async function persist(initial=false){
- if(!db||!user)return;
+ if(!db||!user){setStatus("Brak połączenia");if(!initial)alert("Nie jesteś zalogowany. Zaloguj się ponownie, aby zapisać trening.");return false}
  setStatus("Zapisywanie…");
  const {error}=await db.from("workout_data").upsert({user_id:user.id,data:state,updated_at:new Date().toISOString()},{onConflict:"user_id"});
- if(error){setStatus("Błąd zapisu");console.error(error);if(!initial)alert("Nie udało się zapisać danych: "+error.message)}
- else setStatus("Zapisano online");
+ if(error){setStatus("Błąd zapisu");console.error(error);if(!initial)alert("Nie udało się zapisać danych: "+error.message);return false}
+ else {setStatus("Zapisano online");return true}
 }
+async function saveNow(){clearTimeout(saveTimer);await persist()}
 function scheduleSave(){clearTimeout(saveTimer);setStatus("Niezapisane zmiany…");saveTimer=setTimeout(()=>persist(),500)}
 function getWorkout(){return state.workouts.find(w=>w.id===activeWorkout)}
 function renderHome(){
@@ -390,6 +391,7 @@ function renderLibraryResults(){
   scheduleSave();closeModal();renderDetail();
  });
 }
+$("saveHomeBtn").onclick=saveNow;$("saveDetailBtn").onclick=saveNow;
 $("addExerciseBtn").onclick=()=>openExerciseLibrary();
 
 function editExercise(id){
