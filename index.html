@@ -47,7 +47,7 @@ h1{font-size:29px;letter-spacing:-1px;margin:8px 0 6px}h2{font-size:21px;letter-
 .field{margin:10px 0}.field input,.field textarea{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:11px;color:var(--text);outline:none}
 .field textarea{min-height:66px;resize:vertical}
 .comment{color:#c4c8d0;font-size:13px;margin:10px 2px 0;white-space:pre-wrap}
-.actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.move-btn{min-width:44px;min-height:42px;font-size:21px;padding:6px 12px}.photo.zoomable{cursor:zoom-in}
 .superset{border:1px dashed #829d5c;border-radius:18px;padding:10px;margin:14px 0;background:#b6f36b08}
 .superset-label{color:var(--accent);font-size:12px;font-weight:800;letter-spacing:.5px;padding:2px 4px 5px}
 .empty{border:1px dashed var(--line);border-radius:18px;padding:28px 18px;text-align:center;color:var(--muted);font-size:14px}
@@ -102,6 +102,7 @@ h1{font-size:29px;letter-spacing:-1px;margin:8px 0 6px}h2{font-size:21px;letter-
  <div id="modalBody"></div>
  <div class="sheet-actions"><button id="cancelModal" class="btn secondary">Anuluj</button><button id="saveModal" class="btn">Zapisz</button></div>
 </div></div>
+<div id="imageViewer" class="modal" style="z-index:30;align-items:center;padding:18px" aria-label="Powiększony obraz ćwiczenia"><div class="sheet" style="max-height:92vh;border-radius:20px;position:relative"><div class="row between"><h2 id="imageViewerTitle">Podgląd ćwiczenia</h2><button id="closeImageViewer" class="btn ghost" type="button">✕</button></div><div id="imageViewerContent" style="display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap"></div></div></div>
 
 <script>
 const SUPABASE_URL = "https://xjmyjlqcbpmrojookuau.supabase.co";
@@ -185,7 +186,7 @@ function renderDetail(){
 }
 function exerciseCard(e,w){
  const i=w.exercises.findIndex(x=>x.id===e.id);
- const photo=e.image?`<div style="${e.image2?"display:flex;gap:4px;width:140px;flex:0 0 140px;":""}"><img class="photo" src="${esc(e.image)}" alt="${esc(e.name)}" onerror="this.style.display='none'" style="${e.image2?"width:68px;height:125px;flex:1;min-width:0;":""}">${e.image2?`<img class="photo" src="${esc(e.image2)}" alt="" loading="lazy" style="width:68px;height:125px;flex:1;min-width:0">`:""}</div>`:`<div class="photo placeholder">＋</div>`;
+ const photo=e.image?`<div style="${e.image2?"display:flex;gap:4px;width:140px;flex:0 0 140px;":""}"><img class="photo zoomable" data-zoom="${e.id}" src="${esc(e.image)}" alt="${esc(e.name)}" onerror="this.style.display='none'" style="${e.image2?"width:68px;height:125px;flex:1;min-width:0;":""}">${e.image2?`<img class="photo zoomable" data-zoom="${e.id}" src="${esc(e.image2)}" alt="" loading="lazy" style="width:68px;height:125px;flex:1;min-width:0">`:""}</div>`:`<div class="photo placeholder">＋</div>`;
  return `<article class="exercise" data-card="${e.id}">
   <div class="exercise-head">${photo}<div style="flex:1;min-width:0"><div class="ex-title">${i+1}. ${esc(e.name)}</div><div class="meta">${e.superset?"Ćwiczenie w superserii":"Ćwiczenie"}</div><div class="meta" style="margin-top:7px"><label><input type="checkbox" data-select="${e.id}" ${selectedForSuperset.has(e.id)?"checked":""}> Zaznacz do superserii</label></div></div></div>
   <div class="metrics">
@@ -194,10 +195,11 @@ function exerciseCard(e,w){
    <div class="metric"><label>Serie</label><input inputmode="numeric" value="${esc(e.sets)}" data-field="sets" placeholder="—"></div>
   </div>
   <div class="field" style="margin-bottom:0"><label>Komentarz</label><textarea data-field="comment" placeholder="Dodaj własną notatkę…">${esc(e.comment)}</textarea></div>
-  <div class="actions"><button class="btn secondary small" data-edit="${e.id}">Edytuj ćwiczenie</button><button class="btn secondary small" data-up="${e.id}" ${i===0?"disabled":""}>↑</button><button class="btn secondary small" data-down="${e.id}" ${i===w.exercises.length-1?"disabled":""}>↓</button><button class="btn danger small" data-delete="${e.id}">Usuń</button></div>
+  <div class="actions"><button class="btn secondary small" data-edit="${e.id}">Edytuj ćwiczenie</button><button class="btn secondary small move-btn" title="Przesuń ćwiczenie w górę" aria-label="Przesuń ćwiczenie w górę" data-up="${e.id}" ${i===0?"disabled":""}>↑</button><button class="btn secondary small move-btn" title="Przesuń ćwiczenie w dół" aria-label="Przesuń ćwiczenie w dół" data-down="${e.id}" ${i===w.exercises.length-1?"disabled":""}>↓</button><button class="btn danger small" data-delete="${e.id}">Usuń</button></div>
  </article>`;
 }
 function bindExerciseEvents(){
+ document.querySelectorAll("[data-zoom]").forEach(img=>img.onclick=()=>{const e=getWorkout()?.exercises.find(x=>x.id===img.dataset.zoom);if(e)openImageViewer(e)});
  document.querySelectorAll("[data-card]").forEach(card=>{
   const id=card.dataset.card;
   card.querySelectorAll("[data-field]").forEach(input=>input.addEventListener("input",()=>{const e=getWorkout().exercises.find(x=>x.id===id);e[input.dataset.field]=input.value;scheduleSave()}));
@@ -208,6 +210,17 @@ function bindExerciseEvents(){
  document.querySelectorAll("[data-up]").forEach(b=>b.onclick=()=>moveExercise(b.dataset.up,-1));
  document.querySelectorAll("[data-down]").forEach(b=>b.onclick=()=>moveExercise(b.dataset.down,1));
 }
+function openImageViewer(e){
+ const images=[e.image,e.image2].filter(Boolean);
+ if(!images.length)return;
+ $("imageViewerTitle").textContent=e.name;
+ $("imageViewerContent").innerHTML=images.map(src=>`<img src="${esc(src)}" alt="${esc(e.name)}" style="max-width:100%;max-height:72vh;width:auto;height:auto;object-fit:contain;border-radius:12px">`).join("");
+ $("imageViewer").classList.add("show");
+}
+function closeImageViewer(){$("imageViewer").classList.remove("show");$("imageViewerContent").innerHTML="";}
+$("closeImageViewer").onclick=closeImageViewer;
+$("imageViewer").addEventListener("click",ev=>{if(ev.target===$("imageViewer"))closeImageViewer()});
+document.addEventListener("keydown",ev=>{if(ev.key==="Escape")closeImageViewer()});
 function moveExercise(id,delta){const w=getWorkout(),i=w.exercises.findIndex(e=>e.id===id),j=i+delta;if(j<0||j>=w.exercises.length)return;[w.exercises[i],w.exercises[j]]=[w.exercises[j],w.exercises[i]];scheduleSave();renderDetail()}
 $("backBtn").onclick=()=>{activeWorkout=null;selectedForSuperset.clear();renderHome()};
 $("addWorkoutBtn").onclick=()=>openModal("Nowy trening",`<div class="field"><label>Nazwa treningu</label><input id="workoutName" placeholder="np. Klatka piersiowa"></div>`,async()=>{const name=$("workoutName").value.trim();if(!name)return;state.workouts.push({id:uid(),name,exercises:[]});scheduleSave();renderHome()});
