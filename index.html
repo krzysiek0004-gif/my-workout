@@ -216,7 +216,11 @@ function bindExerciseEvents(){
  document.querySelectorAll("[data-zoom]").forEach(img=>img.onclick=()=>{const e=getWorkout()?.exercises.find(x=>x.id===img.dataset.zoom);if(e)openImageViewer(e)});
  document.querySelectorAll("[data-card]").forEach(card=>{
   const id=card.dataset.card;
-  card.querySelectorAll("[data-field]").forEach(input=>input.addEventListener("input",()=>{const e=getWorkout().exercises.find(x=>x.id===id);e[input.dataset.field]=input.value;scheduleSave()}));
+  card.querySelectorAll("[data-field]").forEach(input=>{
+   input.addEventListener("input",()=>{const e=getWorkout().exercises.find(x=>x.id===id);e[input.dataset.field]=input.value;scheduleSave()});
+   input.addEventListener("change",()=>{const e=getWorkout().exercises.find(x=>x.id===id);e[input.dataset.field]=input.value;saveNow()});
+   input.addEventListener("blur",()=>{const e=getWorkout()?.exercises.find(x=>x.id===id);if(e){e[input.dataset.field]=input.value;saveNow()}});
+  });
  });
  document.querySelectorAll("[data-select]").forEach(x=>x.onchange=()=>{x.checked?selectedForSuperset.add(x.dataset.select):selectedForSuperset.delete(x.dataset.select)});
  document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>editExercise(b.dataset.edit));
