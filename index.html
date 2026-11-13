@@ -446,7 +446,7 @@ $("supersetBtn").onclick=()=>{
  ids.forEach(id=>{const e=w.exercises.find(x=>x.id===id);if(e)e.superset=allInSame?null:group});
  selectedForSuperset.clear();scheduleSave();renderDetail();
 };
-if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).then(registration=>registration.update()).catch(()=>{}));
 connect();
 </script>
 </body>
