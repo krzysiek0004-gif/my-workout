@@ -36,7 +36,7 @@ h1{font-size:29px;letter-spacing:-1px;margin:8px 0 6px}h2{font-size:21px;letter-
 .workout .arrow{color:var(--accent);font-size:20px}
 .exercise{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px;margin:12px 0}
 .exercise-head{display:flex;gap:13px;align-items:flex-start}
-.photo{width:100px;height:90px;flex:0 0 100px;border-radius:13px;object-fit:cover;background:#292d35}
+.photo{width:140px;height:125px;flex:0 0 140px;border-radius:13px;object-fit:cover;background:#292d35}
 .placeholder{display:flex;align-items:center;justify-content:center;color:#777e8b;font-size:28px}
 .ex-title{font-weight:800;font-size:16px;line-height:1.25;margin:2px 0 6px}
 .meta{font-size:12px;color:var(--muted)}
@@ -185,7 +185,7 @@ function renderDetail(){
 }
 function exerciseCard(e,w){
  const i=w.exercises.findIndex(x=>x.id===e.id);
- const photo=e.image?`<div style="${e.image2?"display:flex;gap:3px;width:100px;flex:0 0 100px;":""}"><img class="photo" src="${esc(e.image)}" alt="${esc(e.name)}" onerror="this.style.display='none'" style="${e.image2?"width:48px;flex:1;min-width:0;":""}">${e.image2?`<img class="photo" src="${esc(e.image2)}" alt="" loading="lazy" style="width:48px;flex:1;min-width:0">`:""}</div>`:`<div class="photo placeholder">＋</div>`;
+ const photo=e.image?`<div style="${e.image2?"display:flex;gap:4px;width:140px;flex:0 0 140px;":""}"><img class="photo" src="${esc(e.image)}" alt="${esc(e.name)}" onerror="this.style.display='none'" style="${e.image2?"width:68px;height:125px;flex:1;min-width:0;":""}">${e.image2?`<img class="photo" src="${esc(e.image2)}" alt="" loading="lazy" style="width:68px;height:125px;flex:1;min-width:0">`:""}</div>`:`<div class="photo placeholder">＋</div>`;
  return `<article class="exercise" data-card="${e.id}">
   <div class="exercise-head">${photo}<div style="flex:1;min-width:0"><div class="ex-title">${i+1}. ${esc(e.name)}</div><div class="meta">${e.superset?"Ćwiczenie w superserii":"Ćwiczenie"}</div><div class="meta" style="margin-top:7px"><label><input type="checkbox" data-select="${e.id}" ${selectedForSuperset.has(e.id)?"checked":""}> Zaznacz do superserii</label></div></div></div>
   <div class="metrics">
@@ -381,8 +381,8 @@ function renderLibraryResults(){
  $("libraryStatus").textContent="Wyniki: "+results.length+" / "+exerciseLibrary.length+" (maksymalnie 80 na liście).";
  $("libraryResults").innerHTML=results.length?results.map(ex=>{
   const imgs=repdbImages(ex),name=repdbName(ex),bodyName=PL_BODY[ex.body_part]||ex.body_part||"",equipment=PL_EQUIPMENT[ex.equipment]||ex.equipment||"bez sprzętu";
-  const pics=imgs.length?imgs.map(src=>'<img src="'+esc(src)+'" alt="" loading="lazy" style="width:44px;height:64px;object-fit:contain;border-radius:8px;background:#292d35">').join(""):'<div class="photo placeholder" style="width:90px;height:64px">—</div>';
-  return '<div class="exercise" style="display:flex;gap:10px;align-items:center;padding:10px"><div style="display:flex;gap:3px;flex:0 0 92px">'+pics+'</div><div style="flex:1;min-width:0"><div class="ex-title">'+esc(name)+'</div>'+'<div class="meta">'+esc(bodyName)+' · '+esc(equipment)+'</div></div><button class="btn small" type="button" data-repdb-add="'+esc(ex.id)+'">Dodaj</button></div>';
+  const pics=imgs.length?imgs.map(src=>'<img src="'+esc(src)+'" alt="" loading="lazy" style="width:62px;height:86px;object-fit:contain;border-radius:8px;background:#292d35">').join(""):'<div class="photo placeholder" style="width:128px;height:86px">—</div>';
+  return '<div class="exercise" style="display:flex;gap:10px;align-items:center;padding:10px"><div style="display:flex;gap:3px;flex:0 0 128px">'+pics+'</div><div style="flex:1;min-width:0"><div class="ex-title">'+esc(name)+'</div>'+'<div class="meta">'+esc(bodyName)+' · '+esc(equipment)+'</div></div><button class="btn small" type="button" data-repdb-add="'+esc(ex.id)+'">Dodaj</button></div>';
  }).join(""):'<div class="empty">Brak wyników. Zmień wyszukiwaną nazwę lub partię mięśniową.</div>';
  document.querySelectorAll("[data-repdb-add]").forEach(btn=>btn.onclick=()=>{
   const ex=exerciseLibrary.find(x=>x.id===btn.dataset.repdbAdd);if(!ex)return;
