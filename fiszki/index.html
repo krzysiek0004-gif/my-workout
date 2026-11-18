@@ -63,23 +63,33 @@ function save(){localStorage.setItem(KEY,JSON.stringify(cards))}
 function el(id){return document.getElementById(id)}
 function showTab(name){['learn','words','settings'].forEach(x=>el(x).classList.toggle('hidden',x!==name));document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));if(name==='words')renderWords()}
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+let currentAudio=null;
 function speak(text){
- if(!('speechSynthesis'in window)||!('SpeechSynthesisUtterance'in window)){el('voiceStatus').textContent='Ta przeglądarka nie obsługuje czytania na głos.';return}
- const synth=window.speechSynthesis;
+ const phrase=String(text||'').trim();if(!phrase)return;
+ const lang=localStorage.getItem(VOICE)||'es-ES';
+ // Odtwarzanie pliku audio jest pewniejsze w aplikacji PWA na iOS niż SpeechSynthesis.
  try{
-  const play=()=>{
-   const u=new SpeechSynthesisUtterance(String(text));
-   u.lang=localStorage.getItem(VOICE)||'es-ES';
-   u.rate=.88;u.pitch=1;u.volume=1;
-   // Na iOS przypisanie głosu z getVoices() potrafi uruchomić mowę bez dźwięku.
-   // Pozostawiamy wybór głosu systemowi iPhone'a na podstawie języka.
-   u.onstart=()=>{el('voiceStatus').textContent='Odtwarzam wymowę…'};
-   u.onend=()=>{el('voiceStatus').textContent=''};
-   u.onerror=(e)=>{el('voiceStatus').textContent='Błąd głosu ('+(e.error||'nieznany')+'). Sprawdź głos hiszpański w ustawieniach iPhone’a.'};
-   synth.speak(u);
-  };
-  if(synth.speaking||synth.pending){synth.cancel();setTimeout(play,150)}else{play()}
- }catch(e){el('voiceStatus').textContent='Błąd odtwarzania wymowy.'}
+  if(currentAudio){currentAudio.pause();currentAudio.currentTime=0}
+  const url='https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl='+encodeURIComponent(lang)+'&q='+encodeURIComponent(phrase);
+  currentAudio=new Audio(url);currentAudio.preload='auto';currentAudio.volume=1;
+  el('voiceStatus').textContent='Ładuję wymowę…';
+  currentAudio.onplaying=()=>{el('voiceStatus').textContent=''};
+  currentAudio.onended=()=>{el('voiceStatus').textContent=''};
+  currentAudio.onerror=()=>speakFallback(phrase,lang);
+  const p=currentAudio.play();
+  if(p&&p.catch)p.catch(()=>speakFallback(phrase,lang));
+ }catch(e){speakFallback(phrase,lang)}
+}
+function speakFallback(phrase,lang){
+ if(!('speechSynthesis'in window)||!('SpeechSynthesisUtterance'in window)){el('voiceStatus').textContent='Nie udało się odtworzyć nagrania. Sprawdź połączenie internetowe.';return}
+ try{
+  const synth=window.speechSynthesis;synth.cancel();
+  const u=new SpeechSynthesisUtterance(phrase);u.lang=lang;u.rate=.88;u.volume=1;
+  u.onstart=()=>{el('voiceStatus').textContent='Odtwarzam wymowę…'};
+  u.onend=()=>{el('voiceStatus').textContent=''};
+  u.onerror=()=>{el('voiceStatus').textContent='iPhone nie udostępnił głosu hiszpańskiego.'};
+  synth.speak(u);
+ }catch(e){el('voiceStatus').textContent='Nie udało się uruchomić wymowy.'}
 }
 async function findPicture(card){
  if(card.image||card.imageTried)return;card.imageTried=true;save();
