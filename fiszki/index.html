@@ -65,31 +65,16 @@ function showTab(name){['learn','words','settings'].forEach(x=>el(x).classList.t
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
 let currentAudio=null;
 function speak(text){
- const phrase=String(text||'').trim();if(!phrase)return;
- const lang=localStorage.getItem(VOICE)||'es-ES';
- // Odtwarzanie pliku audio jest pewniejsze w aplikacji PWA na iOS niż SpeechSynthesis.
+ if(!('speechSynthesis'in window)||!('SpeechSynthesisUtterance'in window)){el('voiceStatus').textContent='Ta przeglądarka nie obsługuje czytania na głos.';return}
  try{
-  if(currentAudio){currentAudio.pause();currentAudio.currentTime=0}
-  const url='https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl='+encodeURIComponent(lang)+'&q='+encodeURIComponent(phrase);
-  currentAudio=new Audio(url);currentAudio.preload='auto';currentAudio.volume=1;
-  el('voiceStatus').textContent='Ładuję wymowę…';
-  currentAudio.onplaying=()=>{el('voiceStatus').textContent=''};
-  currentAudio.onended=()=>{el('voiceStatus').textContent=''};
-  currentAudio.onerror=()=>speakFallback(phrase,lang);
-  const p=currentAudio.play();
-  if(p&&p.catch)p.catch(()=>speakFallback(phrase,lang));
- }catch(e){speakFallback(phrase,lang)}
-}
-function speakFallback(phrase,lang){
- if(!('speechSynthesis'in window)||!('SpeechSynthesisUtterance'in window)){el('voiceStatus').textContent='Nie udało się odtworzyć nagrania. Sprawdź połączenie internetowe.';return}
- try{
-  const synth=window.speechSynthesis;synth.cancel();
-  const u=new SpeechSynthesisUtterance(phrase);u.lang=lang;u.rate=.88;u.volume=1;
+  speechSynthesis.cancel();speechSynthesis.resume();
+  const u=new SpeechSynthesisUtterance(String(text));u.lang=localStorage.getItem(VOICE)||'es-ES';u.rate=.84;u.pitch=1;
+  const voices=speechSynthesis.getVoices();const voice=voices.find(v=>/^es(-|_)/i.test(v.lang)&&v.lang.toLowerCase()===u.lang.toLowerCase())||voices.find(v=>/^es(-|_)/i.test(v.lang));if(voice)u.voice=voice;
   u.onstart=()=>{el('voiceStatus').textContent='Odtwarzam wymowę…'};
   u.onend=()=>{el('voiceStatus').textContent=''};
-  u.onerror=()=>{el('voiceStatus').textContent='iPhone nie udostępnił głosu hiszpańskiego.'};
-  synth.speak(u);
- }catch(e){el('voiceStatus').textContent='Nie udało się uruchomić wymowy.'}
+  u.onerror=()=>{el('voiceStatus').textContent='Nie udało się odtworzyć głosu. Sprawdź głośność i głosy hiszpańskie w ustawieniach iPhone’a.'};
+  speechSynthesis.speak(u);
+ }catch(e){el('voiceStatus').textContent='Błąd odtwarzania wymowy.'}
 }
 async function findPicture(card){
  if(card.image||card.imageTried)return;card.imageTried=true;save();
