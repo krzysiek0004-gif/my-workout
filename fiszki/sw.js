@@ -1,4 +1,4 @@
-const CACHE='fiszki-espl-v7';
+const CACHE='fiszki-espl-v8';
 const FILES=['./','./index.html','./manifest.webmanifest','./icon.svg'];
 
 self.addEventListener('install',event=>{
