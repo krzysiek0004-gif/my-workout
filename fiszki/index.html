@@ -45,7 +45,7 @@ button,input,select{font:inherit}button{cursor:pointer;border:0;border-radius:13
 <div id="finish" class="panel hidden"><h1>Koniec serii</h1><p class="muted" id="finishText"></p><div class="stats"><div class="stat"><strong id="newN">0</strong><span>Nowe</span></div><div class="stat"><strong id="reviewN">0</strong><span>Powtórki</span></div><div class="stat"><strong id="hardN">0</strong><span>Trudne</span></div></div><div id="resultLists"></div><button class="full" id="again">Kolejna seria</button></div>
 </section>
 <section id="words" class="hidden">
-<div class="panel"><h2>Dodaj fiszkę</h2><div class="field"><label>Hiszpański</label><input id="newEs" placeholder="np. la ventana"></div><div class="field"><label>Polski</label><input id="newPl" placeholder="Tłumaczenie pojawi się automatycznie"><div class="row"><button class="secondary small" type="button" id="translateNow">Przetłumacz teraz</button><span class="notice" id="translateStatus" role="status">Po wpisaniu hiszpańskiego słowa tłumaczenie zostanie pobrane automatycznie.</span></div></div><div class="field"><label>Obrazek — emoji (opcjonalnie)</label><input id="newEmoji" placeholder="np. 🪟" maxlength="8"></div><div class="field"><label>Adres obrazka (opcjonalnie)</label><input id="newImage" placeholder="Wklej adres albo zostaw puste"><p class="notice">Jeśli zostawisz puste, aplikacja sama wyszuka zdjęcie pasujące do hiszpańskiego słowa.</p></div><button class="full" id="addWord">Dodaj do słownika</button><p class="notice" id="addNotice"></p></div>
+<div class="panel"><h2>Dodaj fiszkę</h2><div class="field"><label>Hiszpański</label><input id="newEs" placeholder="Wpisz hiszpańskie słowo lub zdanie"></div><div class="field"><label>Polski</label><input id="newPl" placeholder="Wpisz polskie słowo lub zdanie"></div><div class="row"><button class="secondary small" type="button" id="translateNow">Przetłumacz teraz</button><span class="notice" id="translateStatus" role="status">Wpisz tekst w dowolnym polu — drugie zostanie automatycznie przetłumaczone.</span></div><div class="field"><label>Obrazek — emoji (opcjonalnie)</label><input id="newEmoji" placeholder="np. 🪟" maxlength="8"></div><div class="field"><label>Adres obrazka (opcjonalnie)</label><input id="newImage" placeholder="Wklej adres albo zostaw puste"><p class="notice">Jeśli zostawisz puste, aplikacja sama wyszuka zdjęcie pasujące do hiszpańskiego słowa.</p></div><button class="full" id="addWord">Dodaj do słownika</button><p class="notice" id="addNotice"></p></div>
 <div class="panel"><h1>Twój słownik</h1><p class="muted">Dodawaj własne słówka i przeglądaj cały zestaw.</p><div class="field"><input id="search" placeholder="Szukaj słowa…"></div><div id="wordList" class="list"></div></div>
 <div class="panel"><h2>Kopia zapasowa</h2><div class="row"><button class="secondary" id="export">Eksportuj słownik</button><button class="secondary" id="importBtn">Importuj plik</button><input id="importFile" type="file" accept="application/json" class="hidden"></div></div>
 </section>
@@ -99,15 +99,18 @@ function finish(){el('study').classList.add('hidden');el('finish').classList.rem
 el('start').onclick=start;el('reveal').onclick=reveal;el('speak').onclick=()=>speak(current.es);el('known').onclick=()=>rate(true);el('missed').onclick=()=>rate(false);el('again').onclick=()=>{el('finish').classList.add('hidden');el('setup').classList.remove('hidden')};
 function renderWords(){let q=el('search').value.toLowerCase();let arr=cards.filter(c=>(c.es+' '+c.pl).toLowerCase().includes(q));el('wordList').innerHTML=arr.length?arr.map(c=>'<div class="item"><span class="em">'+(c.image?'<img src="'+escapeAttr(c.image)+'" style="width:34px;height:34px;object-fit:cover;border-radius:8px">':escapeHtml(c.emoji||'💬'))+'</span><div class="words"><strong>'+escapeHtml(c.es)+'</strong><small>'+escapeHtml(c.pl)+'</small></div><span class="pill '+(c.status==='hard'?'hard':c.status==='review'?'review':'')+'">'+(c.status==='hard'?'trudne':c.status==='review'?'powtórka':'nowe')+'</span><button class="secondary small" data-del="'+c.id+'">Usuń</button></div>').join(''):'<div class="empty">Nie znaleziono słówek.</div>';document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{if(confirm('Usunąć tę fiszkę?')){cards=cards.filter(c=>c.id!==b.dataset.del);save();renderWords()}})}
 el('search').oninput=renderWords;
-let translateTimer=null,translationIsAutomatic=false,translationRequest=0;
+let translateTimer=null,translationIsAutomatic=false,translationRequest=0,translationSource='es';
 async function translateNewWord(){
- const es=el('newEs').value.trim();
- if(!es){el('translateStatus').textContent='Najpierw wpisz hiszpańskie słowo.';return}
- if(el('newPl').value.trim()&&!translationIsAutomatic){el('translateStatus').textContent='Pole polskie zawiera własne tłumaczenie — nie nadpisuję go.';return}
+ const sourceId=translationSource==='es'?'newEs':'newPl';
+ const targetId=translationSource==='es'?'newPl':'newEs';
+ const source=el(sourceId).value.trim();
+ if(!source){el('translateStatus').textContent='Najpierw wpisz tekst w jednym z pól.';return}
+ if(el(targetId).value.trim()&&!translationIsAutomatic){el('translateStatus').textContent='Drugie pole zawiera własny tekst — nie nadpisuję go.';return}
  const request=++translationRequest;
  el('translateStatus').textContent='Tłumaczę…';
  try{
-  const url='https://api.mymemory.translated.net/get?q='+encodeURIComponent(es)+'&langpair=es|pl';
+  const pair=translationSource==='es'?'es|pl':'pl|es';
+  const url='https://api.mymemory.translated.net/get?q='+encodeURIComponent(source)+'&langpair='+pair;
   const response=await fetch(url);
   if(!response.ok)throw Error('HTTP '+response.status);
   const data=await response.json();
@@ -116,19 +119,23 @@ async function translateNewWord(){
   if(Number(data.responseStatus)!==200||!translated)throw Error('Brak tłumaczenia');
   const clean=translated.replace(/&#39;/g,"'").replace(/&quot;/g,'"').replace(/&amp;/g,'&').trim();
   if(!clean)throw Error('Puste tłumaczenie');
-  el('newPl').value=clean;translationIsAutomatic=true;
-  el('translateStatus').textContent='Wstępne tłumaczenie pobrane. Możesz je dowolnie poprawić.';
+  el(targetId).value=clean;translationIsAutomatic=true;
+  el('translateStatus').textContent='Tłumaczenie pobrane. Możesz je dowolnie poprawić.';
  }catch(e){if(request===translationRequest)el('translateStatus').textContent='Nie udało się pobrać tłumaczenia. Sprawdź internet lub wpisz je ręcznie.'}
 }
-el('newEs').addEventListener('input',()=>{
+function sourceChanged(source){
  clearTimeout(translateTimer);
- if(translationIsAutomatic){el('newPl').value='';translationIsAutomatic=false}
- if(el('newEs').value.trim())translateTimer=setTimeout(translateNewWord,900);
- else el('translateStatus').textContent='Po wpisaniu hiszpańskiego słowa tłumaczenie zostanie pobrane automatycznie.';
-});
-el('newPl').addEventListener('input',()=>{translationIsAutomatic=false});
+ translationSource=source;
+ if(translationIsAutomatic){el(source==='es'?'newPl':'newEs').value='';translationIsAutomatic=false}
+ translationRequest++;
+ const value=el(source==='es'?'newEs':'newPl').value.trim();
+ if(value)translateTimer=setTimeout(translateNewWord,900);
+ else el('translateStatus').textContent='Wpisz tekst w dowolnym polu — drugie zostanie automatycznie przetłumaczone.';
+}
+el('newEs').addEventListener('input',()=>sourceChanged('es'));
+el('newPl').addEventListener('input',()=>{translationIsAutomatic=false;sourceChanged('pl')});
 el('translateNow').onclick=()=>{clearTimeout(translateTimer);translateNewWord()};
-el('addWord').onclick=async()=>{let es=el('newEs').value.trim(),pl=el('newPl').value.trim();if(!es||!pl){el('addNotice').textContent='Wpisz hiszpańskie i polskie słowo.';return}const card={id:'u'+Date.now(),es,pl,emoji:el('newEmoji').value.trim()||'💬',image:el('newImage').value.trim(),status:'new',seen:0,correct:0,wrong:0};cards.push(card);save();['newEs','newPl','newEmoji','newImage'].forEach(x=>el(x).value='');renderWords();if(!card.image){el('addNotice').textContent='Dodano fiszkę. Szukam pasującego zdjęcia…';await findPicture(card);el('addNotice').textContent=card.image?'Dodano fiszkę i automatycznie znaleziono zdjęcie.':'Dodano fiszkę. Nie znaleziono zdjęcia — możesz wkleić własny adres.';renderWords()}else{el('addNotice').textContent='Dodano fiszkę.'}};
+el('addWord').onclick=async()=>{let es=el('newEs').value.trim(),pl=el('newPl').value.trim();if(!es||!pl){el('addNotice').textContent='Wpisz hiszpańskie i polskie słowo.';return}const card={id:'u'+Date.now(),es,pl,emoji:el('newEmoji').value.trim()||'💬',image:el('newImage').value.trim(),status:'new',seen:0,correct:0,wrong:0};cards.push(card);save();['newEs','newPl','newEmoji','newImage'].forEach(x=>el(x).value='');translationIsAutomatic=false;translationRequest++;el('translateStatus').textContent='Wpisz tekst w dowolnym polu — drugie zostanie automatycznie przetłumaczone.';renderWords();if(!card.image){el('addNotice').textContent='Dodano fiszkę. Szukam pasującego zdjęcia…';await findPicture(card);el('addNotice').textContent=card.image?'Dodano fiszkę i automatycznie znaleziono zdjęcie.':'Dodano fiszkę. Nie znaleziono zdjęcia — możesz wkleić własny adres.';renderWords()}else{el('addNotice').textContent='Dodano fiszkę.'}};
 el('voiceLang').value=localStorage.getItem(VOICE)||'es-ES';el('voiceLang').onchange=()=>localStorage.setItem(VOICE,el('voiceLang').value);
 el('export').onclick=()=>{let blob=new Blob([JSON.stringify(cards,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='moj-slownik-hiszpanski.json';a.click();URL.revokeObjectURL(a.href)};
 el('importBtn').onclick=()=>el('importFile').click();el('importFile').onchange=async e=>{let f=e.target.files[0];if(!f)return;try{let data=JSON.parse(await f.text());if(!Array.isArray(data)||!data.every(c=>c.es&&c.pl))throw Error();cards=data;save();renderWords();alert('Zaimportowano słownik.')}catch(err){alert('Nieprawidłowy plik słownika.')}e.target.value=''};
