@@ -1,0 +1,10 @@
+{
+  "name": "Fiszki hiszpański — polski",
+  "short_name": "Fiszki ES-PL",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#101713",
+  "theme_color": "#17251f",
+  "icons": [{"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}
