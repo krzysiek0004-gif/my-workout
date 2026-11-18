@@ -133,7 +133,7 @@ function sourceChanged(source){
  else el('translateStatus').textContent='Wpisz tekst w dowolnym polu — drugie zostanie automatycznie przetłumaczone.';
 }
 el('newEs').addEventListener('input',()=>sourceChanged('es'));
-el('newPl').addEventListener('input',()=>{translationIsAutomatic=false;sourceChanged('pl')});
+el('newPl').addEventListener('input',()=>sourceChanged('pl'));
 el('translateNow').onclick=()=>{clearTimeout(translateTimer);translateNewWord()};
 el('addWord').onclick=async()=>{let es=el('newEs').value.trim(),pl=el('newPl').value.trim();if(!es||!pl){el('addNotice').textContent='Wpisz hiszpańskie i polskie słowo.';return}const card={id:'u'+Date.now(),es,pl,emoji:el('newEmoji').value.trim()||'💬',image:el('newImage').value.trim(),status:'new',seen:0,correct:0,wrong:0};cards.push(card);save();['newEs','newPl','newEmoji','newImage'].forEach(x=>el(x).value='');translationIsAutomatic=false;translationRequest++;el('translateStatus').textContent='Wpisz tekst w dowolnym polu — drugie zostanie automatycznie przetłumaczone.';renderWords();if(!card.image){el('addNotice').textContent='Dodano fiszkę. Szukam pasującego zdjęcia…';await findPicture(card);el('addNotice').textContent=card.image?'Dodano fiszkę i automatycznie znaleziono zdjęcie.':'Dodano fiszkę. Nie znaleziono zdjęcia — możesz wkleić własny adres.';renderWords()}else{el('addNotice').textContent='Dodano fiszkę.'}};
 el('voiceLang').value=localStorage.getItem(VOICE)||'es-ES';el('voiceLang').onchange=()=>localStorage.setItem(VOICE,el('voiceLang').value);
