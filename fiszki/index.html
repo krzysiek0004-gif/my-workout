@@ -118,7 +118,7 @@ el('voiceLang').value=localStorage.getItem(VOICE)||'es-ES';el('voiceLang').oncha
 el('export').onclick=()=>{let blob=new Blob([JSON.stringify(cards,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='moj-slownik-hiszpanski.json';a.click();URL.revokeObjectURL(a.href)};
 el('importBtn').onclick=()=>el('importFile').click();el('importFile').onchange=async e=>{let f=e.target.files[0];if(!f)return;try{let data=JSON.parse(await f.text());if(!Array.isArray(data)||!data.every(c=>c.es&&c.pl))throw Error();cards=data;save();renderWords();alert('Zaimportowano słownik.')}catch(err){alert('Nieprawidłowy plik słownika.')}e.target.value=''};
 el('reset').onclick=()=>{if(confirm('Przywrócić przykładowe słówka? Twoje własne fiszki zostaną zastąpione.')){cards=SEED.map((a,i)=>({id:'s'+i,es:a[0],pl:a[1],emoji:a[2],image:'',status:'new',seen:0,correct:0,wrong:0}));save();alert('Przywrócono słownik.')}};
-if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(registration=>registration.update()).catch(()=>{}));
 if('speechSynthesis'in window)speechSynthesis.getVoices();
 </script>
 </body></html>
