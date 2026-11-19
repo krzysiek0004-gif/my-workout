@@ -99,7 +99,7 @@ function finish(){el('study').classList.add('hidden');el('finish').classList.rem
 el('start').onclick=start;el('abort').onclick=()=>{if(confirm('Przerwać naukę? Dotychczasowe odpowiedzi zostaną zapisane.')){if('speechSynthesis'in window)speechSynthesis.cancel();el('study').classList.add('hidden');el('setup').classList.remove('hidden')}};el('reveal').onclick=reveal;el('speak').onclick=()=>speak(current.es);el('known').onclick=()=>rate(true);el('missed').onclick=()=>rate(false);el('again').onclick=()=>{el('finish').classList.add('hidden');el('setup').classList.remove('hidden')};
 function renderWords(){let q=el('search').value.toLowerCase();let arr=cards.filter(c=>(c.es+' '+c.pl).toLowerCase().includes(q));el('wordList').innerHTML=arr.length?arr.map(c=>'<div class="item"><span class="em">'+(c.image?'<img src="'+escapeAttr(c.image)+'" style="width:34px;height:34px;object-fit:cover;border-radius:8px">':escapeHtml(c.emoji||'💬'))+'</span><div class="words"><strong>'+escapeHtml(c.es)+'</strong><small>'+escapeHtml(c.pl)+'</small></div><span class="pill '+(c.status==='hard'?'hard':c.status==='review'?'review':'')+'">'+(c.status==='hard'?'trudne':c.status==='review'?'powtórka':'nowe')+'</span><button class="secondary small" data-del="'+c.id+'">Usuń</button></div>').join(''):'<div class="empty">Nie znaleziono słówek.</div>';document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{if(confirm('Usunąć tę fiszkę?')){cards=cards.filter(c=>c.id!==b.dataset.del);save();renderWords()}})}
 el('search').oninput=renderWords;
-let translateTimer=null,translationIsAutomatic=false,translationRequest=0,translationSource='es';
+let translateTimer=null,translationIsAutomatic=false,translationRequest=0,translationSource='es',translationTarget=null,manualTranslationField=null;
 async function translateNewWord(){
  const sourceId=translationSource==='es'?'newEs':'newPl';
  const targetId=translationSource==='es'?'newPl':'newEs';
@@ -119,23 +119,34 @@ async function translateNewWord(){
   if(Number(data.responseStatus)!==200||!translated)throw Error('Brak tłumaczenia');
   const clean=translated.replace(/&#39;/g,"'").replace(/&quot;/g,'"').replace(/&amp;/g,'&').trim();
   if(!clean)throw Error('Puste tłumaczenie');
-  el(targetId).value=clean;translationIsAutomatic=true;
+  el(targetId).value=clean;translationIsAutomatic=true;translationTarget=targetId;manualTranslationField=null;
   el('translateStatus').textContent='Tłumaczenie pobrane. Możesz je dowolnie poprawić.';
  }catch(e){if(request===translationRequest)el('translateStatus').textContent='Nie udało się pobrać tłumaczenia. Sprawdź internet lub wpisz je ręcznie.'}
 }
 function sourceChanged(source){
  clearTimeout(translateTimer);
  translationSource=source;
- if(translationIsAutomatic){el(source==='es'?'newPl':'newEs').value='';translationIsAutomatic=false}
+ if(translationIsAutomatic&&translationTarget){el(translationTarget).value='';translationIsAutomatic=false;translationTarget=null}
  translationRequest++;
+ manualTranslationField=null;
  const value=el(source==='es'?'newEs':'newPl').value.trim();
  if(value)translateTimer=setTimeout(translateNewWord,900);
  else el('translateStatus').textContent='Wpisz tekst w dowolnym polu — drugie zostanie automatycznie przetłumaczone.';
 }
-el('newEs').addEventListener('input',()=>sourceChanged('es'));
-el('newPl').addEventListener('input',()=>sourceChanged('pl'));
+function handleNewInput(source){
+ const field=source==='es'?'newEs':'newPl';
+ if(manualTranslationField===field)return;
+ if(translationIsAutomatic&&translationTarget===field){
+  clearTimeout(translateTimer);translationRequest++;translationIsAutomatic=false;translationTarget=null;manualTranslationField=field;
+  el('translateStatus').textContent='Wpisujesz własne tłumaczenie — nie będę go zmieniać.';
+  return;
+ }
+ sourceChanged(source);
+}
+el('newEs').addEventListener('input',()=>handleNewInput('es'));
+el('newPl').addEventListener('input',()=>handleNewInput('pl'));
 el('translateNow').onclick=()=>{clearTimeout(translateTimer);translateNewWord()};
-el('addWord').onclick=async()=>{let es=el('newEs').value.trim(),pl=el('newPl').value.trim();if(!es||!pl){el('addNotice').textContent='Wpisz hiszpańskie i polskie słowo.';return}const card={id:'u'+Date.now(),es,pl,emoji:el('newEmoji').value.trim()||'💬',image:el('newImage').value.trim(),status:'new',seen:0,correct:0,wrong:0};cards.push(card);save();['newEs','newPl','newEmoji','newImage'].forEach(x=>el(x).value='');translationIsAutomatic=false;translationRequest++;el('translateStatus').textContent='Wpisz tekst w dowolnym polu — drugie zostanie automatycznie przetłumaczone.';renderWords();if(!card.image){el('addNotice').textContent='Dodano fiszkę. Szukam pasującego zdjęcia…';await findPicture(card);el('addNotice').textContent=card.image?'Dodano fiszkę i automatycznie znaleziono zdjęcie.':'Dodano fiszkę. Nie znaleziono zdjęcia — możesz wkleić własny adres.';renderWords()}else{el('addNotice').textContent='Dodano fiszkę.'}};
+el('addWord').onclick=async()=>{let es=el('newEs').value.trim(),pl=el('newPl').value.trim();if(!es||!pl){el('addNotice').textContent='Wpisz hiszpańskie i polskie słowo.';return}const card={id:'u'+Date.now(),es,pl,emoji:el('newEmoji').value.trim()||'💬',image:el('newImage').value.trim(),status:'new',seen:0,correct:0,wrong:0};cards.push(card);save();['newEs','newPl','newEmoji','newImage'].forEach(x=>el(x).value='');translationIsAutomatic=false;translationTarget=null;manualTranslationField=null;translationRequest++;el('translateStatus').textContent='Wpisz tekst w dowolnym polu — drugie zostanie automatycznie przetłumaczone.';renderWords();if(!card.image){el('addNotice').textContent='Dodano fiszkę. Szukam pasującego zdjęcia…';await findPicture(card);el('addNotice').textContent=card.image?'Dodano fiszkę i automatycznie znaleziono zdjęcie.':'Dodano fiszkę. Nie znaleziono zdjęcia — możesz wkleić własny adres.';renderWords()}else{el('addNotice').textContent='Dodano fiszkę.'}};
 el('voiceLang').value=localStorage.getItem(VOICE)||'es-ES';el('voiceLang').onchange=()=>localStorage.setItem(VOICE,el('voiceLang').value);
 el('export').onclick=()=>{let blob=new Blob([JSON.stringify(cards,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='moj-slownik-hiszpanski.json';a.click();URL.revokeObjectURL(a.href)};
 el('importBtn').onclick=()=>el('importFile').click();el('importFile').onchange=async e=>{let f=e.target.files[0];if(!f)return;try{let data=JSON.parse(await f.text());if(!Array.isArray(data)||!data.every(c=>c.es&&c.pl))throw Error();cards=data;save();renderWords();alert('Zaimportowano słownik.')}catch(err){alert('Nieprawidłowy plik słownika.')}e.target.value=''};
