@@ -83,7 +83,7 @@ function el(id){return document.getElementById(id)}
 updateSourceCounts();
 function showTab(name){['learn','words','settings'].forEach(x=>el(x).classList.toggle('hidden',x!==name));document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));if(name==='words')renderWords()}
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
-let currentAudio=null;
+let currentAudio=null,revealSpeechTimer=null;
 function speak(text){
  if(!('speechSynthesis'in window)||!('SpeechSynthesisUtterance'in window)){el('voiceStatus').textContent='Ta przeglądarka nie obsługuje czytania na głos.';return}
  try{
@@ -141,7 +141,7 @@ async function findPicture(card,force=false){
 function updateProgress(){let total=good+bad+1;el('counter').textContent=Math.min(index+1,queue.length)+' / '+queue.length;el('correct').textContent=good;el('wrong').textContent=bad;let done=good+bad,den=Math.max(1,queue.length+missedQueue.length);el('goodbar').style.width=(good/den*100)+'%';el('badbar').style.width=(bad/den*100)+'%'}
 function start(){dir=el('direction').value;let n=Math.max(1,Math.min(200,Number(el('count').value)||20)),filter=el('source').value;let pool=cards.filter(c=>filter==='all'||c.status===filter);if(!pool.length){alert('W tej kategorii nie ma jeszcze fiszek.');return}queue=shuffle(pool).slice(0,n);index=0;good=0;bad=0;missedQueue=[];results=[];el('setup').classList.add('hidden');el('finish').classList.add('hidden');el('study').classList.remove('hidden');nextCard()}
 function shuffle(a){return [...a].sort(()=>Math.random()-.5)}
-function nextCard(){if(index>=queue.length){if(missedQueue.length){queue=missedQueue;missedQueue=[];index=0}else{finish();return}}current=queue[index];revealed=false;el('answerArea').classList.add('hidden');el('rating').classList.add('hidden');el('reveal').classList.remove('hidden');el('prompt').textContent=dir==='es-pl'?current.es:current.pl;el('answer').textContent=dir==='es-pl'?current.pl:current.es;el('picture').innerHTML=current.image?'<img alt="" data-local-image="'+escapeAttr(current.image)+'">':escapeHtml(current.emoji||'💬');if(current.image)hydrateImages(el('picture'));else findPicture(current);updateProgress()}
+function nextCard(){if(revealSpeechTimer){clearTimeout(revealSpeechTimer);revealSpeechTimer=null}if(index>=queue.length){if(missedQueue.length){queue=missedQueue;missedQueue=[];index=0}else{finish();return}}current=queue[index];revealed=false;el('answerArea').classList.add('hidden');el('rating').classList.add('hidden');el('reveal').classList.remove('hidden');el('prompt').textContent=dir==='es-pl'?current.es:current.pl;el('answer').textContent=dir==='es-pl'?current.pl:current.es;el('picture').innerHTML=current.image?'<img alt="" data-local-image="'+escapeAttr(current.image)+'">':escapeHtml(current.emoji||'💬');if(current.image)hydrateImages(el('picture'));else findPicture(current);updateProgress()}
 
 // Lokalne przechowywanie zdjęć w IndexedDB — niezależnie od pamięci podręcznej przeglądarki.
 const IMAGE_DB='fiszki_espl_images_v1',IMAGE_STORE='images',imageObjectUrls=new Map();
@@ -181,7 +181,7 @@ async function hydrateImages(root=document){
 if(navigator.storage?.persist)navigator.storage.persist().catch(()=>{});
 
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}function escapeAttr(s){return escapeHtml(s)}
-function reveal(){if(revealed)return;revealed=true;el('answerArea').classList.remove('hidden');el('rating').classList.remove('hidden');el('reveal').classList.add('hidden');if(dir==='es-pl')speak(current.es);else speak(current.es)}
+function reveal(){if(revealed)return;revealed=true;el('answerArea').classList.remove('hidden');el('rating').classList.remove('hidden');el('reveal').classList.add('hidden');if(revealSpeechTimer)clearTimeout(revealSpeechTimer);revealSpeechTimer=setTimeout(()=>{revealSpeechTimer=null;if(revealed&&current)speak(current.es)},1000)}
 function rate(known){current.seen=(current.seen||0)+1;if(known){good++;current.correct=(current.correct||0)+1;if(current.status==='new')current.status='review';else if(current.status==='hard'&&current.correct>=2)current.status='review';results.push({card:current,known:true})}else{bad++;current.wrong=(current.wrong||0)+1;current.status='hard';missedQueue.push(current);results.push({card:current,known:false})}save();index++;nextCard()}
 function finish(){el('study').classList.add('hidden');el('finish').classList.remove('hidden');let counts={new:0,review:0,hard:0};cards.forEach(c=>counts[c.status]=(counts[c.status]||0)+1);el('newN').textContent=counts.new;el('reviewN').textContent=counts.review;el('hardN').textContent=counts.hard;el('finishText').textContent='Wynik tej serii: '+good+' poprawnych, '+bad+' błędnych. Błędne odpowiedzi wracały do powtórki.'}
 el('start').onclick=start;el('abort').onclick=()=>{if(confirm('Przerwać naukę? Dotychczasowe odpowiedzi zostaną zapisane.')){if('speechSynthesis'in window)speechSynthesis.cancel();el('study').classList.add('hidden');el('setup').classList.remove('hidden')}};el('reveal').onclick=reveal;el('speak').onclick=()=>speak(current.es);el('known').onclick=()=>rate(true);el('missed').onclick=()=>rate(false);el('again').onclick=()=>{el('finish').classList.add('hidden');el('setup').classList.remove('hidden')};
