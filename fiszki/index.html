@@ -138,7 +138,7 @@ async function getLocalImage(url){
  try{const db=await openImageDb();return await new Promise((resolve,reject)=>{const r=db.transaction(IMAGE_STORE,'readonly').objectStore(IMAGE_STORE).get(url);r.onsuccess=()=>resolve(r.result?.blob||null);r.onerror=()=>reject(r.error)})}catch(e){return null}
 }
 async function storeImageLocally(url,blob){
- if(!url||!blob||!/^image\\//i.test(blob.type)||blob.size>4*1024*1024)return false;
+ if(!url||!blob||!/^image\//i.test(blob.type)||blob.size>4*1024*1024)return false;
  try{const db=await openImageDb();await new Promise((resolve,reject)=>{const tx=db.transaction(IMAGE_STORE,'readwrite');tx.objectStore(IMAGE_STORE).put({url,blob,savedAt:Date.now()});tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error)});return true}catch(e){return false}
 }
 async function cacheImageUrl(url){
@@ -290,7 +290,7 @@ el('geminiEndpoint').value=localStorage.getItem('espl_gemini_worker_url')||'';
 el('geminiAccessToken').value=localStorage.getItem('espl_gemini_access_token')||'';
 el('saveGeminiEndpoint').onclick=()=>{
  const value=el('geminiEndpoint').value.trim().replace(/\/$/,'');
- if(value&&!/^https:\\/\\//i.test(value)){el('geminiConfigStatus').textContent='Adres musi zaczynać się od https://';return}
+ if(value&&!/^https:\/\//i.test(value)){el('geminiConfigStatus').textContent='Adres musi zaczynać się od https://';return}
  const token=el('geminiAccessToken').value.trim();
  if(value){try{new URL(value)}catch(e){el('geminiConfigStatus').textContent='Nieprawidłowy adres usługi.';return}if(token.length<24){el('geminiConfigStatus').textContent='Hasło dostępu musi mieć co najmniej 24 znaki.';return}localStorage.setItem('espl_gemini_worker_url',value);localStorage.setItem('espl_gemini_access_token',token);el('geminiConfigStatus').textContent='Zapisano. Nowe tłumaczenia będą wykonywane przez Gemini.'}
  else{localStorage.removeItem('espl_gemini_worker_url');localStorage.removeItem('espl_gemini_access_token');el('geminiConfigStatus').textContent='Adres usunięty. Aplikacja wróciła do LibreTranslate.'}
