@@ -52,6 +52,18 @@ button,input,select{font:inherit}button{cursor:pointer;border:0;border-radius:13
 </main><div class="foot">Fiszki ES · PL — działa także bez połączenia po pierwszym otwarciu</div>
 </div>
 <script>
+window.addEventListener('error',function(e){
+  var box=document.getElementById('appError');
+  if(!box){box=document.createElement('div');box.id='appError';box.style.cssText='position:fixed;z-index:99999;left:8px;right:8px;bottom:8px;padding:14px;background:#7b2525;color:white;border:2px solid white;border-radius:12px;font:14px system-ui;white-space:pre-wrap';document.body.appendChild(box)}
+  box.textContent='Błąd uruchamiania aplikacji: '+(e.message||'nieznany')+' ('+(e.lineno||'?')+')';
+});
+window.addEventListener('unhandledrejection',function(e){
+  var box=document.getElementById('appError');
+  if(!box){box=document.createElement('div');box.id='appError';box.style.cssText='position:fixed;z-index:99999;left:8px;right:8px;bottom:8px;padding:14px;background:#7b2525;color:white;border:2px solid white;border-radius:12px;font:14px system-ui;white-space:pre-wrap';document.body.appendChild(box)}
+  box.textContent='Błąd aplikacji: '+String(e.reason&&e.reason.message||e.reason||'nieznany');
+});
+</script>
+<script>
 const SEED=[
 ['hola','cześć','👋'],['gracias','dziękuję','🙏'],['por favor','proszę','🙂'],['agua','woda','💧'],['comida','jedzenie','🍽️'],['pan','chleb','🍞'],['leche','mleko','🥛'],['manzana','jabłko','🍎'],['naranja','pomarańcza','🍊'],['aguacate','awokado','🥑'],['pera','gruszka','🍐'],['melocotón','brzoskwinia','🍑'],['fresa','truskawka','🍓'],['pollo','kurczak','🍗'],['pescado','ryba','🐟'],['carne','mięso','🥩'],['huevo','jajko','🥚'],['arroz','ryż','🍚'],['patata','ziemniak','🥔'],['cebolla','cebula','🧅'],['ajo','czosnek','🧄'],['tomate','pomidor','🍅'],['lechuga','sałata','🥬'],['calabacín','cukinia','🥒'],['calabaza','dynia','🎃'],['zanahoria','marchew','🥕'],['pepino','ogórek','🥒'],['limón','cytryna','🍋'],['cortar','kroić','🔪'],['trocear','pokroić na kawałki','🔪'],['filetear','filetować','🐟'],['sin espinas','bez ości','🐟'],['detrás','z tyłu','↩️'],['al fondo','w głębi','🏞️'],['delante','z przodu','➡️'],['sin','bez','🚫'],['con','z','➕'],['barato','tani','🏷️'],['caro','drogi','💶'],['joven','młody','🧑'],['tarde','późno / popołudnie','🌇'],['mañana','jutro / rano','🌅'],['ahora','teraz','⏰'],['siempre','zawsze','♾️'],['nunca','nigdy','🚫'],['quiero','chcę','🙋'],['tengo','mam','✋'],['voy a','zamierzam','🚶'],['aparte','osobno','↔️'],['entero','w całości','🍗'],['pedazos','kawałki','🧩'],['cabeza','głowa','🙂'],['sopa','zupa','🥣'],['mercado','targ','🛒'],['tienda','sklep','🏪'],['¿cuánto cuesta?','ile to kosztuje?','💶'],['buen provecho','smacznego','🍴'],['la pechuga','pierś z kurczaka','🍗'],['el cuchillo','nóż','🔪'],['la espalda','plecy','🧍'],['caliente','gorący','🔥']
 ];
