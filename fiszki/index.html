@@ -96,7 +96,7 @@ function imageScore(title,card){
 async function findPicture(card,force=false){
  if((card.image&&!force)||(card.imageTried&&!force))return;card.imageTried=true;save();
  const hints=IMAGE_HINTS[String(card.es||'').toLowerCase()]||[];
- const terms=[card.es,card.pl,...hints].filter(Boolean),seen=new Set(),candidates=[];
+ const terms=[card.pl,card.es,...hints].filter(Boolean),seen=new Set(),candidates=[];
  for(const term of terms){
   try{
    const url='https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch='+encodeURIComponent(term)+'&gsrnamespace=6&gsrlimit=8&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=500&format=json&origin=*';
