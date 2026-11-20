@@ -45,7 +45,7 @@ button,input,select{font:inherit}button{cursor:pointer;border:0;border-radius:13
 </section>
 <section id="words" class="hidden">
 <div class="panel"><h2>Dodaj fiszkę</h2><div class="field"><label>Hiszpański</label><input id="newEs" placeholder="Wpisz hiszpańskie słowo lub zdanie"></div><div class="field"><label>Polski</label><input id="newPl" placeholder="Wpisz polskie słowo lub zdanie"></div><div class="row"><button class="secondary small" type="button" id="translateNow">Przetłumacz teraz</button><span class="notice" id="translateStatus" role="status">Wpisz tekst w dowolnym polu — drugie zostanie automatycznie przetłumaczone.</span></div><div class="field"><label>Obrazek — emoji (opcjonalnie)</label><input id="newEmoji" placeholder="np. 🪟" maxlength="8"></div><div class="field"><label>Adres obrazka (opcjonalnie)</label><input id="newImage" placeholder="Wklej adres albo zostaw puste"><p class="notice">Jeśli zostawisz puste, aplikacja sama wyszuka zdjęcie pasujące do hiszpańskiego słowa.</p></div><button class="full" id="addWord">Dodaj do słownika</button><p class="notice" id="addNotice"></p></div>
-<div class="panel"><h1>Twój słownik</h1><p class="muted">Dodawaj własne słówka i przeglądaj cały zestaw.</p><div class="field"><input id="search" placeholder="Szukaj słowa…"></div><div id="wordList" class="list"></div></div>
+<div class="panel"><h1>Twój słownik</h1><p class="muted">Dodawaj własne słówka i przeglądaj cały zestaw.</p><div class="row"><button class="secondary full" id="updatePictures" type="button">Uzupełnij brakujące obrazki</button></div><p class="notice" id="pictureUpdateStatus" role="status">Przycisk wyszukuje zdjęcia wyłącznie dla fiszek, które nie mają obrazka.</p><div class="field"><input id="search" placeholder="Szukaj słowa…"></div><div id="wordList" class="list"></div></div>
 <div class="panel"><h2>Kopia zapasowa</h2><div class="row"><button class="secondary" id="export">Eksportuj słownik</button><button class="secondary" id="importBtn">Importuj plik</button><input id="importFile" type="file" accept="application/json" class="hidden"></div></div>
 </section>
 <section id="settings" class="hidden"><div class="panel"><h1>Ustawienia</h1><div class="field"><label>Wymowa hiszpańska</label><select id="voiceLang"><option value="es-ES">Hiszpania (es-ES)</option><option value="es-MX">Meksyk (es-MX)</option></select></div><p class="notice">Głos zależy od głosów dostępnych w systemie i przeglądarce. Dane są przechowywane lokalnie w pamięci przeglądarki na tym urządzeniu.</p><button class="secondary full" id="reset">Przywróć przykładowy słownik</button></div></section>
@@ -98,6 +98,27 @@ function finish(){el('study').classList.add('hidden');el('finish').classList.rem
 el('start').onclick=start;el('abort').onclick=()=>{if(confirm('Przerwać naukę? Dotychczasowe odpowiedzi zostaną zapisane.')){if('speechSynthesis'in window)speechSynthesis.cancel();el('study').classList.add('hidden');el('setup').classList.remove('hidden')}};el('reveal').onclick=reveal;el('speak').onclick=()=>speak(current.es);el('known').onclick=()=>rate(true);el('missed').onclick=()=>rate(false);el('again').onclick=()=>{el('finish').classList.add('hidden');el('setup').classList.remove('hidden')};
 function renderWords(){let q=el('search').value.toLowerCase();let arr=cards.filter(c=>(c.es+' '+c.pl).toLowerCase().includes(q));el('wordList').innerHTML=arr.length?arr.map(c=>'<div class="item"><span class="em">'+(c.image?'<img src="'+escapeAttr(c.image)+'" style="width:34px;height:34px;object-fit:cover;border-radius:8px">':escapeHtml(c.emoji||'💬'))+'</span><div class="words"><strong>'+escapeHtml(c.es)+'</strong><small>'+escapeHtml(c.pl)+'</small></div><span class="pill '+(c.status==='hard'?'hard':c.status==='review'?'review':'')+'">'+(c.status==='hard'?'trudne':c.status==='review'?'powtórka':'nowe')+'</span><button class="secondary small" data-del="'+c.id+'">Usuń</button></div>').join(''):'<div class="empty">Nie znaleziono słówek.</div>';document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{if(confirm('Usunąć tę fiszkę?')){cards=cards.filter(c=>c.id!==b.dataset.del);save();renderWords()}})}
 el('search').oninput=renderWords;
+el('updatePictures').onclick=async()=>{
+ const missing=cards.filter(c=>!String(c.image||'').trim());
+ const button=el('updatePictures'),status=el('pictureUpdateStatus');
+ if(!missing.length){status.textContent='Wszystkie fiszki mają już obrazek.';return}
+ button.disabled=true;
+ let found=0,failed=0,done=0;
+ status.textContent='Rozpoczynam wyszukiwanie obrazków…';
+ try{
+  for(const card of missing){
+   card.imageTried=false;
+   await findPicture(card);
+   if(String(card.image||'').trim())found++;else failed++;
+   done++;
+   status.textContent='Sprawdzono '+done+' z '+missing.length+'. Znaleziono: '+found+'. Bez zdjęcia: '+failed+'.';
+   renderWords();
+  }
+  status.textContent='Zakończono. Uzupełniono '+found+' z '+missing.length+' brakujących obrazków.'+(failed?' Nie znaleziono zdjęcia dla '+failed+' fiszek.':'');
+ }finally{
+  button.disabled=false;
+ }
+};
 let translateTimer=null,translationIsAutomatic=false,translationRequest=0,translationSource='es',translationTarget=null,manualTranslationField=null;
 async function translateNewWord(){
  const sourceId=translationSource==='es'?'newEs':'newPl';
