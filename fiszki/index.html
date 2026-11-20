@@ -113,20 +113,58 @@ async function findPicture(card,force=false){
  const best=card.pictureCandidates[0],second=card.pictureCandidates[1];
  if(best&&(best.score>=3||(!second&&best.score>=1)||(best.score>=2&&best.score-(second?.score??-10)>=2))){
   card.image=best.image;card.pictureCandidates=[];
-  if(current===card)el('picture').innerHTML='<img alt="" src="'+escapeAttr(best.image)+'">';
+  if(current===card){el('picture').innerHTML='<img alt="" data-local-image="'+escapeAttr(best.image)+'">';hydrateImages(el('picture'))}cacheImageUrl(best.image);
  }
  save();if(el('words')&&!el('words').classList.contains('hidden'))renderWords();
 }
 function updateProgress(){let total=good+bad+1;el('counter').textContent=Math.min(index+1,queue.length)+' / '+queue.length;el('correct').textContent=good;el('wrong').textContent=bad;let done=good+bad,den=Math.max(1,queue.length+missedQueue.length);el('goodbar').style.width=(good/den*100)+'%';el('badbar').style.width=(bad/den*100)+'%'}
 function start(){dir=el('direction').value;let n=Math.max(1,Math.min(200,Number(el('count').value)||20)),filter=el('source').value;let pool=cards.filter(c=>filter==='all'||c.status===filter);if(!pool.length){alert('W tej kategorii nie ma jeszcze fiszek.');return}queue=shuffle(pool).slice(0,n);index=0;good=0;bad=0;missedQueue=[];results=[];el('setup').classList.add('hidden');el('finish').classList.add('hidden');el('study').classList.remove('hidden');nextCard()}
 function shuffle(a){return [...a].sort(()=>Math.random()-.5)}
-function nextCard(){if(index>=queue.length){if(missedQueue.length){queue=missedQueue;missedQueue=[];index=0}else{finish();return}}current=queue[index];revealed=false;el('answerArea').classList.add('hidden');el('rating').classList.add('hidden');el('reveal').classList.remove('hidden');el('prompt').textContent=dir==='es-pl'?current.es:current.pl;el('answer').textContent=dir==='es-pl'?current.pl:current.es;el('picture').innerHTML=current.image?'<img alt="" src="'+escapeAttr(current.image)+'">':escapeHtml(current.emoji||'💬');if(!current.image)findPicture(current);updateProgress()}
+function nextCard(){if(index>=queue.length){if(missedQueue.length){queue=missedQueue;missedQueue=[];index=0}else{finish();return}}current=queue[index];revealed=false;el('answerArea').classList.add('hidden');el('rating').classList.add('hidden');el('reveal').classList.remove('hidden');el('prompt').textContent=dir==='es-pl'?current.es:current.pl;el('answer').textContent=dir==='es-pl'?current.pl:current.es;el('picture').innerHTML=current.image?'<img alt="" data-local-image="'+escapeAttr(current.image)+'">':escapeHtml(current.emoji||'💬');if(current.image)hydrateImages(el('picture'));else findPicture(current);updateProgress()}
+
+// Lokalne przechowywanie zdjęć w IndexedDB — niezależnie od pamięci podręcznej przeglądarki.
+const IMAGE_DB='fiszki_espl_images_v1',IMAGE_STORE='images',imageObjectUrls=new Map();
+let imageDbPromise=null;
+function openImageDb(){
+ if(!('indexedDB'in window))return Promise.reject(Error('IndexedDB niedostępne'));
+ if(!imageDbPromise)imageDbPromise=new Promise((resolve,reject)=>{
+  const request=indexedDB.open(IMAGE_DB,1);
+  request.onupgradeneeded=()=>{const db=request.result;if(!db.objectStoreNames.contains(IMAGE_STORE))db.createObjectStore(IMAGE_STORE,{keyPath:'url'})};
+  request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);
+ });
+ return imageDbPromise;
+}
+async function getLocalImage(url){
+ try{const db=await openImageDb();return await new Promise((resolve,reject)=>{const r=db.transaction(IMAGE_STORE,'readonly').objectStore(IMAGE_STORE).get(url);r.onsuccess=()=>resolve(r.result?.blob||null);r.onerror=()=>reject(r.error)})}catch(e){return null}
+}
+async function storeImageLocally(url,blob){
+ if(!url||!blob||!/^image\\//i.test(blob.type)||blob.size>4*1024*1024)return false;
+ try{const db=await openImageDb();await new Promise((resolve,reject)=>{const tx=db.transaction(IMAGE_STORE,'readwrite');tx.objectStore(IMAGE_STORE).put({url,blob,savedAt:Date.now()});tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error)});return true}catch(e){return false}
+}
+async function cacheImageUrl(url){
+ try{const response=await fetch(url,{mode:'cors',credentials:'omit'});if(!response.ok)return false;return await storeImageLocally(url,await response.blob())}catch(e){return false}
+}
+async function localImageSource(url){
+ const blob=await getLocalImage(url);
+ if(blob){if(!imageObjectUrls.has(url))imageObjectUrls.set(url,URL.createObjectURL(blob));return imageObjectUrls.get(url)}
+ return url;
+}
+async function hydrateImages(root=document){
+ const imgs=[...root.querySelectorAll('img[data-local-image]')];
+ await Promise.all(imgs.map(async img=>{
+  const url=img.dataset.localImage;if(!url)return;
+  const local=await localImageSource(url);
+  if(local){img.src=local;if(local===url)img.addEventListener('load',()=>cacheImageUrl(url),{once:true})}
+ }));
+}
+if(navigator.storage?.persist)navigator.storage.persist().catch(()=>{});
+
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}function escapeAttr(s){return escapeHtml(s)}
 function reveal(){if(revealed)return;revealed=true;el('answerArea').classList.remove('hidden');el('rating').classList.remove('hidden');el('reveal').classList.add('hidden');if(dir==='es-pl')speak(current.es);else speak(current.es)}
 function rate(known){current.seen=(current.seen||0)+1;if(known){good++;current.correct=(current.correct||0)+1;if(current.status==='new')current.status='review';else if(current.status==='hard'&&current.correct>=2)current.status='review';results.push({card:current,known:true})}else{bad++;current.wrong=(current.wrong||0)+1;current.status='hard';missedQueue.push(current);results.push({card:current,known:false})}save();index++;nextCard()}
 function finish(){el('study').classList.add('hidden');el('finish').classList.remove('hidden');let counts={new:0,review:0,hard:0};cards.forEach(c=>counts[c.status]=(counts[c.status]||0)+1);el('newN').textContent=counts.new;el('reviewN').textContent=counts.review;el('hardN').textContent=counts.hard;el('finishText').textContent='Wynik tej serii: '+good+' poprawnych, '+bad+' błędnych. Błędne odpowiedzi wracały do powtórki.'}
 el('start').onclick=start;el('abort').onclick=()=>{if(confirm('Przerwać naukę? Dotychczasowe odpowiedzi zostaną zapisane.')){if('speechSynthesis'in window)speechSynthesis.cancel();el('study').classList.add('hidden');el('setup').classList.remove('hidden')}};el('reveal').onclick=reveal;el('speak').onclick=()=>speak(current.es);el('known').onclick=()=>rate(true);el('missed').onclick=()=>rate(false);el('again').onclick=()=>{el('finish').classList.add('hidden');el('setup').classList.remove('hidden')};
-function renderWords(){let q=el('search').value.toLowerCase();let arr=cards.filter(c=>(c.es+' '+c.pl).toLowerCase().includes(q));arr=arr.map((c,i)=>({c,i,t:Number(c.createdAt)||(String(c.id||'').startsWith('u')?Number(String(c.id).slice(1)):0)||0})).sort((a,b)=>wordSort==='newest'?(b.t-a.t||b.i-a.i):(a.t-b.t||a.i-b.i)).map(x=>x.c);el('wordList').innerHTML=arr.length?arr.map(c=>'<div class="item"><span class="em">'+(c.image?'<img src="'+escapeAttr(c.image)+'" style="width:34px;height:34px;object-fit:cover;border-radius:8px">':escapeHtml(c.emoji||'💬'))+'</span><div class="words"><strong>'+escapeHtml(c.es)+'</strong><small>'+escapeHtml(c.pl)+'</small></div><span class="pill '+(c.status==='hard'?'hard':c.status==='review'?'review':'')+'">'+(c.status==='hard'?'trudne':c.status==='review'?'powtórka':'nowe')+'</span><button class="secondary small" data-del="'+c.id+'">Usuń</button></div>'+(c.pictureCandidates?.length?'<div class="notice">Nie mam pewności, który obraz pasuje — wybierz właściwy:</div><div class="candidateGrid">'+c.pictureCandidates.map((p,i)=>'<button class="candidate" data-pick-card="'+c.id+'" data-pick-index="'+i+'"><img src="'+escapeAttr(p.image)+'" alt=""><span>'+escapeHtml(p.title.replace(/^File:/,''))+'</span></button>').join('')+'</div>':'')).join(''):'<div class="empty">Nie znaleziono słówek.</div>';document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{if(confirm('Usunąć tę fiszkę?')){cards=cards.filter(c=>c.id!==b.dataset.del);save();renderWords()}});document.querySelectorAll('[data-pick-card]').forEach(b=>b.onclick=()=>{const c=cards.find(x=>x.id===b.dataset.pickCard),p=c?.pictureCandidates?.[Number(b.dataset.pickIndex)];if(!c||!p)return;c.image=p.image;c.pictureCandidates=[];c.imageTried=true;save();if(current===c)el('picture').innerHTML='<img alt="" src="'+escapeAttr(c.image)+'">';renderWords()})}
+function renderWords(){let q=el('search').value.toLowerCase();let arr=cards.filter(c=>(c.es+' '+c.pl).toLowerCase().includes(q));arr=arr.map((c,i)=>({c,i,t:Number(c.createdAt)||(String(c.id||'').startsWith('u')?Number(String(c.id).slice(1)):0)||0})).sort((a,b)=>wordSort==='newest'?(b.t-a.t||b.i-a.i):(a.t-b.t||a.i-b.i)).map(x=>x.c);el('wordList').innerHTML=arr.length?arr.map(c=>'<div class="item"><span class="em">'+(c.image?'<img data-local-image="'+escapeAttr(c.image)+'" style="width:34px;height:34px;object-fit:cover;border-radius:8px">':escapeHtml(c.emoji||'💬'))+'</span><div class="words"><strong>'+escapeHtml(c.es)+'</strong><small>'+escapeHtml(c.pl)+'</small></div><span class="pill '+(c.status==='hard'?'hard':c.status==='review'?'review':'')+'">'+(c.status==='hard'?'trudne':c.status==='review'?'powtórka':'nowe')+'</span><button class="secondary small" data-del="'+c.id+'">Usuń</button></div>'+(c.pictureCandidates?.length?'<div class="notice">Nie mam pewności, który obraz pasuje — wybierz właściwy:</div><div class="candidateGrid">'+c.pictureCandidates.map((p,i)=>'<button class="candidate" data-pick-card="'+c.id+'" data-pick-index="'+i+'"><img src="'+escapeAttr(p.image)+'" alt=""><span>'+escapeHtml(p.title.replace(/^File:/,''))+'</span></button>').join('')+'</div>':'')).join(''):'<div class="empty">Nie znaleziono słówek.</div>';hydrateImages(el('wordList'));document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{if(confirm('Usunąć tę fiszkę?')){cards=cards.filter(c=>c.id!==b.dataset.del);save();renderWords()}});document.querySelectorAll('[data-pick-card]').forEach(b=>b.onclick=()=>{const c=cards.find(x=>x.id===b.dataset.pickCard),p=c?.pictureCandidates?.[Number(b.dataset.pickIndex)];if(!c||!p)return;c.image=p.image;c.pictureCandidates=[];c.imageTried=true;save();if(current===c){el('picture').innerHTML='<img alt="" data-local-image="'+escapeAttr(c.image)+'">';hydrateImages(el('picture'))}cacheImageUrl(c.image);renderWords()})}
 el('search').oninput=renderWords;
 el('sortWords').onclick=()=>{wordSort=wordSort==='newest'?'oldest':'newest';el('sortWords').textContent='Kolejność: '+(wordSort==='newest'?'najnowsze':'najstarsze');renderWords()};
 el('updatePictures').onclick=async()=>{
@@ -207,7 +245,7 @@ function handleNewInput(source){
 el('newEs').addEventListener('input',()=>handleNewInput('es'));
 el('newPl').addEventListener('input',()=>handleNewInput('pl'));
 el('translateNow').onclick=()=>{clearTimeout(translateTimer);translateNewWord()};
-el('addWord').onclick=async()=>{let es=el('newEs').value.trim(),pl=el('newPl').value.trim();if(!es||!pl){el('addNotice').textContent='Wpisz hiszpańskie i polskie słowo.';return}const card={id:'u'+Date.now(),createdAt:Date.now(),es,pl,emoji:el('newEmoji').value.trim()||'💬',image:el('newImage').value.trim(),status:'new',seen:0,correct:0,wrong:0};cards.push(card);save();['newEs','newPl','newEmoji','newImage'].forEach(x=>el(x).value='');translationIsAutomatic=false;translationTarget=null;manualTranslationField=null;translationRequest++;el('translateStatus').textContent='Wpisz tekst w dowolnym polu — drugie zostanie automatycznie przetłumaczone.';renderWords();if(!card.image){el('addNotice').textContent='Dodano fiszkę. Szukam pasującego zdjęcia…';await findPicture(card);el('addNotice').textContent=card.image?'Dodano fiszkę i automatycznie znaleziono zdjęcie.':'Dodano fiszkę. Nie znaleziono zdjęcia — możesz wkleić własny adres.';renderWords()}else{el('addNotice').textContent='Dodano fiszkę.'}};
+el('addWord').onclick=async()=>{let es=el('newEs').value.trim(),pl=el('newPl').value.trim();if(!es||!pl){el('addNotice').textContent='Wpisz hiszpańskie i polskie słowo.';return}const card={id:'u'+Date.now(),createdAt:Date.now(),es,pl,emoji:el('newEmoji').value.trim()||'💬',image:el('newImage').value.trim(),status:'new',seen:0,correct:0,wrong:0};if(card.image)cacheImageUrl(card.image);cards.push(card);save();['newEs','newPl','newEmoji','newImage'].forEach(x=>el(x).value='');translationIsAutomatic=false;translationTarget=null;manualTranslationField=null;translationRequest++;el('translateStatus').textContent='Wpisz tekst w dowolnym polu — drugie zostanie automatycznie przetłumaczone.';renderWords();if(!card.image){el('addNotice').textContent='Dodano fiszkę. Szukam pasującego zdjęcia…';await findPicture(card);el('addNotice').textContent=card.image?'Dodano fiszkę i automatycznie znaleziono zdjęcie.':'Dodano fiszkę. Nie znaleziono zdjęcia — możesz wkleić własny adres.';renderWords()}else{el('addNotice').textContent='Dodano fiszkę.'}};
 el('voiceLang').value=localStorage.getItem(VOICE)||'es-ES';el('voiceLang').onchange=()=>localStorage.setItem(VOICE,el('voiceLang').value);
 el('export').onclick=()=>{let blob=new Blob([JSON.stringify(cards,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='moj-slownik-hiszpanski.json';a.click();URL.revokeObjectURL(a.href)};
 el('importBtn').onclick=()=>el('importFile').click();el('importFile').onchange=async e=>{let f=e.target.files[0];if(!f)return;try{let data=JSON.parse(await f.text());if(!Array.isArray(data)||!data.every(c=>c.es&&c.pl))throw Error();cards=data;save();renderWords();alert('Zaimportowano słownik.')}catch(err){alert('Nieprawidłowy plik słownika.')}e.target.value=''};
