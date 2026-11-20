@@ -25,8 +25,13 @@ export default {
     if (request.method !== "POST") {
       return Response.json({ error: "Use POST" }, { status: 405, headers: cors });
     }
-    if (!env.GEMINI_API_KEY) {
+    if (!env.GEMINI_API_KEY || !env.APP_ACCESS_TOKEN) {
       return Response.json({ error: "Brak klucza Gemini po stronie usługi." }, { status: 503, headers: cors });
+    }
+
+    const suppliedToken = request.headers.get("Authorization") || "";
+    if (suppliedToken !== "Bearer " + env.APP_ACCESS_TOKEN) {
+      return Response.json({ error: "Brak poprawnego hasła dostępu." }, { status: 401, headers: cors });
     }
 
     try {
