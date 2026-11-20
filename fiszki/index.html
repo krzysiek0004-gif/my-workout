@@ -85,9 +85,9 @@ const IMAGE_HINTS={
  'cerca':['nearby','close to'],'dentro':['inside','interior'],'fuera':['outside','exterior']
 };
 function imageScore(title,card){
- const t=String(title||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,' ');
- const words=[card.es,card.pl].join(' ').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,' ').split(/[^a-z0-9]+/).filter(w=>w.length>2);
- let score=0;for(const w of words)if(t.includes(w))score+=3;
+ const t=String(title||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,' ');
+ const words=[card.es,card.pl].join(' ').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,' ').split(/[^a-z0-9]+/).filter(w=>w.length>2);
+ let score=0;const titleWords=t.split(/[^a-z0-9]+/).filter(Boolean);for(const w of words)if(titleWords.includes(w))score+=3;
  const hints=IMAGE_HINTS[String(card.es||'').toLowerCase()]||[];
  for(const h of hints){const parts=h.toLowerCase().split(/[^a-z]+/).filter(Boolean);if(parts.some(p=>t.includes(p)))score+=1;}
  if(/football|soccer|futbol|player|stadium|match|goalkeeper|piłkarz/i.test(t)&&hints.length)score-=5;
