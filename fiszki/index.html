@@ -199,6 +199,35 @@ el('refreshAllPictures').onclick=async()=>{
  }finally{button.disabled=false;missingButton.disabled=false;save()}
 };
 let translateTimer=null,translationIsAutomatic=false,translationRequest=0,translationSource='es',translationTarget=null,manualTranslationField=null;
+async function libreTranslate(source,sourceLang,targetLang){
+ const endpoints=[
+  'https://libretranslate.de/translate',
+  'https://translate.argosopentech.com/translate',
+  'https://translate.api.skitzen.com/translate'
+ ];
+ let lastError=null;
+ for(const endpoint of endpoints){
+  try{
+   const controller=new AbortController();
+   const timeout=setTimeout(()=>controller.abort(),12000);
+   let response;
+   try{
+    response=await fetch(endpoint,{
+     method:'POST',
+     headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({q:source,source:sourceLang,target:targetLang,format:'text'}),
+     signal:controller.signal
+    });
+   }finally{clearTimeout(timeout)}
+   if(!response.ok)throw Error('HTTP '+response.status);
+   const data=await response.json();
+   const translated=String(data.translatedText||'').trim();
+   if(!translated)throw Error('Puste tłumaczenie');
+   return translated;
+  }catch(error){lastError=error}
+ }
+ throw lastError||Error('Brak dostępnego serwera LibreTranslate');
+}
 async function translateNewWord(){
  const sourceId=translationSource==='es'?'newEs':'newPl';
  const targetId=translationSource==='es'?'newPl':'newEs';
@@ -206,21 +235,15 @@ async function translateNewWord(){
  if(!source){el('translateStatus').textContent='Najpierw wpisz tekst w jednym z pól.';return}
  if(el(targetId).value.trim()&&!translationIsAutomatic){el('translateStatus').textContent='Drugie pole zawiera własny tekst — nie nadpisuję go.';return}
  const request=++translationRequest;
- el('translateStatus').textContent='Tłumaczę…';
+ el('translateStatus').textContent='Tłumaczę przez LibreTranslate…';
  try{
-  const pair=translationSource==='es'?'es|pl':'pl|es';
-  const url='https://api.mymemory.translated.net/get?q='+encodeURIComponent(source)+'&langpair='+pair;
-  const response=await fetch(url);
-  if(!response.ok)throw Error('HTTP '+response.status);
-  const data=await response.json();
+  const sourceLang=translationSource==='es'?'es':'pl';
+  const targetLang=translationSource==='es'?'pl':'es';
+  const clean=await libreTranslate(source,sourceLang,targetLang);
   if(request!==translationRequest)return;
-  const translated=data.responseData?.translatedText;
-  if(Number(data.responseStatus)!==200||!translated)throw Error('Brak tłumaczenia');
-  const clean=translated.replace(/&#39;/g,"'").replace(/&quot;/g,'"').replace(/&amp;/g,'&').trim();
-  if(!clean)throw Error('Puste tłumaczenie');
   el(targetId).value=clean;translationIsAutomatic=true;translationTarget=targetId;manualTranslationField=null;
-  el('translateStatus').textContent='Tłumaczenie pobrane. Możesz je dowolnie poprawić.';
- }catch(e){if(request===translationRequest)el('translateStatus').textContent='Nie udało się pobrać tłumaczenia. Sprawdź internet lub wpisz je ręcznie.'}
+  el('translateStatus').textContent='Tłumaczenie LibreTranslate pobrane. Możesz je dowolnie poprawić.';
+ }catch(e){if(request===translationRequest)el('translateStatus').textContent='LibreTranslate jest chwilowo niedostępny. Spróbuj ponownie albo wpisz tłumaczenie ręcznie.'}
 }
 function sourceChanged(source){
  clearTimeout(translateTimer);
