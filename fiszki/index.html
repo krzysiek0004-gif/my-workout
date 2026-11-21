@@ -71,12 +71,12 @@ const KEY='espl_cards_v1',VOICE='espl_voice_v1',SESSION_KEY='espl_session_done_v
 let cards=load(),queue=[],index=0,good=0,bad=0,missedQueue=[],results=[],current=null,dir='es-pl',revealed=false,wordSort='newest',sessionFilter='all';
 let sessionDone=loadSessionDone();
 function loadSessionDone(){try{const value=JSON.parse(localStorage.getItem(SESSION_KEY)||'[]');return new Set(Array.isArray(value)?value.map(String):[])}catch(e){return new Set()}}
-function saveSessionDone(){localStorage.setItem(SESSION_KEY,JSON.stringify([...sessionDone]))}
+function saveSessionDone(){localStorage.setItem(SESSION_KEY,JSON.stringify([...sessionDone]));updateSourceCounts()}
 function resetSession(){sessionDone.clear();saveSessionDone();el('sessionStatus').textContent='Postęp sesji wyzerowany. Następna nauka zacznie się od początku.'}
 function load(){try{let x=JSON.parse(localStorage.getItem(KEY));if(Array.isArray(x)&&x.length)return x}catch(e){}return SEED.map((a,i)=>({id:'s'+i,es:a[0],pl:a[1],emoji:a[2],image:'',status:'new',seen:0,correct:0,wrong:0}))}
 function save(){localStorage.setItem(KEY,JSON.stringify(cards));updateSourceCounts()}
 function updateSourceCounts(){
- const counts={all:cards.length,new:cards.filter(c=>c.status==='new').length,review:cards.filter(c=>c.status==='review').length,hard:cards.filter(c=>c.status==='hard').length};
+ const counts={all:cards.length,new:cards.filter(c=>c.status==='new').length,review:cards.filter(c=>c.status==='review'&&!sessionDone.has(String(c.id))).length,hard:cards.filter(c=>c.status==='hard').length};
  const labels={all:'Wszystkie',new:'Nowe',review:'Powtórki',hard:'Trudne'};
  Object.keys(labels).forEach(value=>{
   const option=el('source').querySelector('option[value="'+value+'"]');
