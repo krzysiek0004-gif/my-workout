@@ -109,26 +109,45 @@ const IMAGE_HINTS={
  'abajo':['below','downstairs','underneath'],'lejos':['far away','distant landscape'],
  'cerca':['nearby','close to'],'dentro':['inside','interior'],'fuera':['outside','exterior']
 };
-function imageScore(title,card){
- const t=String(title||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,' ');
- const words=[card.es,card.pl].join(' ').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,' ').split(/[^a-z0-9]+/).filter(w=>w.length>2);
+function imageScore(title,card,extraTerms=[]){
+ const t=String(title||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,' ');
+ const words=[card.es,card.pl,...extraTerms].join(' ').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,' ').split(/[^a-z0-9]+/).filter(w=>w.length>2);
  let score=0;const titleWords=t.split(/[^a-z0-9]+/).filter(Boolean);for(const w of words)if(titleWords.includes(w))score+=3;
  const hints=IMAGE_HINTS[String(card.es||'').toLowerCase()]||[];
  for(const h of hints){const parts=h.toLowerCase().split(/[^a-z]+/).filter(Boolean);if(parts.some(p=>t.includes(p)))score+=1;}
  if(/football|soccer|futbol|player|stadium|match|goalkeeper|piłkarz/i.test(t)&&hints.length)score-=5;
  return score;
 }
+async function geminiImageQueries(card){
+ const endpoint=localStorage.getItem('espl_gemini_worker_url')||'';
+ const token=localStorage.getItem('espl_gemini_access_token')||'';
+ if(!endpoint||!token)return [];
+ const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),20000);
+ try{
+  const response=await fetch(endpoint,{
+   method:'POST',
+   headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+   body:JSON.stringify({action:'image_queries',es:card.es,pl:card.pl}),
+   signal:controller.signal
+  });
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw Error(data.error||('HTTP '+response.status));
+  return Array.isArray(data.queries)?data.queries.map(q=>String(q).trim()).filter(Boolean).slice(0,3):[];
+ }finally{clearTimeout(timeout)}
+}
 async function findPicture(card,force=false){
  if((card.image&&!force)||(card.imageTried&&!force))return;card.imageTried=true;save();
  const hints=IMAGE_HINTS[String(card.es||'').toLowerCase()]||[];
- const terms=[card.pl,card.es,...hints].filter(Boolean),seen=new Set(),candidates=[];
+ let aiTerms=[];
+ try{aiTerms=await geminiImageQueries(card)}catch(e){console.warn('Gemini image search:',e)}
+ const terms=[...aiTerms,card.pl,card.es,...hints].filter(Boolean),seen=new Set(),candidates=[];
  for(const term of terms){
   try{
    const url='https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch='+encodeURIComponent(term)+'&gsrnamespace=6&gsrlimit=8&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=500&format=json&origin=*';
    const response=await fetch(url);if(!response.ok)continue;const data=await response.json();
    for(const p of Object.values(data.query?.pages||{})){
     const info=p.imageinfo?.[0],image=info?.thumburl||info?.url;if(!image||seen.has(image))continue;
-    seen.add(image);candidates.push({image,title:p.title||'',score:imageScore(p.title,card)});
+    seen.add(image);candidates.push({image,title:p.title||'',score:imageScore(p.title,card,aiTerms)});
    }
    if(candidates.length>=18)break;
   }catch(e){}
