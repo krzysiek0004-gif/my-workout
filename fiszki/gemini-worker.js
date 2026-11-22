@@ -36,6 +36,47 @@ export default {
 
     try {
       const body = await request.json();
+      if (body.action === "image_queries") {
+        const es = String(body.es || "").trim();
+        const pl = String(body.pl || "").trim();
+        if (!es || !pl || es.length > 300 || pl.length > 300) {
+          return Response.json({ error: "Brak poprawnego słowa hiszpańskiego lub tłumaczenia." }, { status: 400, headers: cors });
+        }
+        const imagePrompt = `Dobierz wyszukiwane hasła do zdjęcia ilustrującego fiszkę językową. Hiszpański: "${es}". Polski: "${pl}". Zwróć 3 krótkie, konkretne zapytania po angielsku, odpowiednie do wyszukiwarki plików Wikimedia Commons. Wybieraj rzeczywiste obiekty, osoby lub czynności; unikaj abstrakcyjnych skojarzeń, diagramów, logotypów i obrazów z tekstem. Dla wieloznacznego słowa użyj znaczenia wskazanego przez tłumaczenie. Zwróć wyłącznie poprawny JSON w formacie {"queries":["...","...","..."]}.`;
+        const imageApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${env.GEMINI_API_KEY}`;
+        const imageApiBody = JSON.stringify({
+          contents: [{ parts: [{ text: imagePrompt }] }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 120, responseMimeType: "application/json" }
+        });
+        let imageResponse;
+        for (let attempt = 0; attempt < 4; attempt++) {
+          imageResponse = await fetch(imageApiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: imageApiBody
+          });
+          if (imageResponse.ok || ![429, 500, 502, 503, 504].includes(imageResponse.status) || attempt === 3) break;
+          await new Promise(resolve => setTimeout(resolve, 1000 * (2 ** attempt)));
+        }
+        let imageResult = {};
+        try { imageResult = await imageResponse.json(); } catch (e) {}
+        if (!imageResponse.ok) {
+          return Response.json({ error: "Gemini nie przygotował haseł do zdjęcia (" + imageResponse.status + ")." }, { status: 502, headers: cors });
+        }
+        const rawQueries = (imageResult.candidates?.[0]?.content?.parts || []).map(part => part.text || "").join("").trim();
+        let parsed;
+        try { parsed = JSON.parse(rawQueries); } catch (e) {
+          return Response.json({ error: "Gemini zwrócił nieprawidłowe hasła do zdjęcia." }, { status: 502, headers: cors });
+        }
+        const queries = Array.isArray(parsed.queries)
+          ? parsed.queries.map(q => String(q).trim()).filter(q => q && q.length <= 100).slice(0, 3)
+          : [];
+        if (!queries.length) {
+          return Response.json({ error: "Gemini nie zwrócił haseł do zdjęcia." }, { status: 502, headers: cors });
+        }
+        return Response.json({ queries }, { headers: { ...cors, "Cache-Control": "no-store" } });
+      }
+
       const text = String(body.text || "").trim();
       const sourceLang = body.sourceLang;
       const targetLang = body.targetLang;
