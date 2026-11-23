@@ -297,15 +297,34 @@ async function translateNewWord(){
  if(el(targetId).value.trim()&&!translationIsAutomatic){el('translateStatus').textContent='Drugie pole zawiera własny tekst — nie nadpisuję go.';return}
  const request=++translationRequest;
  const endpoint=localStorage.getItem('espl_gemini_worker_url')||'';
- el('translateStatus').textContent=endpoint?'Tłumaczę przez Gemini…':'Tłumaczę przez LibreTranslate…';
- try{
-  const sourceLang=translationSource==='es'?'es':'pl';
-  const targetLang=translationSource==='es'?'pl':'es';
-  const clean=endpoint?await geminiTranslate(source,sourceLang,targetLang,endpoint):await libreTranslate(source,sourceLang,targetLang);
+ const sourceLang=translationSource==='es'?'es':'pl';
+ const targetLang=translationSource==='es'?'pl':'es';
+ let geminiError=null;
+ if(endpoint){
+  el('translateStatus').textContent='Tłumaczę przez Gemini…';
+  try{
+   const translated=await geminiTranslate(source,sourceLang,targetLang,endpoint);
+   if(request!==translationRequest)return;
+   el(targetId).value=translated;translationIsAutomatic=true;translationTarget=targetId;manualTranslationField=null;
+   el('translateStatus').textContent='Tłumaczenie Gemini pobrane. Możesz je dowolnie poprawić.';
+   return;
+  }catch(e){geminiError=e}
   if(request!==translationRequest)return;
-  el(targetId).value=clean;translationIsAutomatic=true;translationTarget=targetId;manualTranslationField=null;
-  el('translateStatus').textContent=(endpoint?'Tłumaczenie Gemini':'Tłumaczenie LibreTranslate')+' pobrane. Możesz je dowolnie poprawić.';
- }catch(e){if(request===translationRequest)el('translateStatus').textContent=(endpoint?'Gemini nie odpowiedział: ':'LibreTranslate jest chwilowo niedostępny: ')+(e.message||'błąd połączenia')+'. Spróbuj ponownie albo wpisz tłumaczenie ręcznie.'}
+  el('translateStatus').textContent='Gemini jest niedostępne ('+(geminiError.message||'błąd')+'). Próbuję przez LibreTranslate…';
+ }
+ try{
+  const translated=await libreTranslate(source,sourceLang,targetLang);
+  if(request!==translationRequest)return;
+  el(targetId).value=translated;translationIsAutomatic=true;translationTarget=targetId;manualTranslationField=null;
+  el('translateStatus').textContent=endpoint?'Gemini nie odpowiedziało — użyto tłumacza awaryjnego LibreTranslate. Możesz poprawić wynik.':'Tłumaczenie LibreTranslate pobrane. Możesz je dowolnie poprawić.';
+ }catch(e){
+  if(request===translationRequest){
+   const fallbackError=e.message||'błąd połączenia';
+   el('translateStatus').textContent=endpoint
+    ?'Nie udało się przetłumaczyć. Gemini: '+(geminiError.message||'błąd')+'. LibreTranslate: '+fallbackError+'. Spróbuj ponownie albo wpisz tłumaczenie ręcznie.'
+    :'LibreTranslate jest chwilowo niedostępny: '+fallbackError+'. Spróbuj ponownie albo wpisz tłumaczenie ręcznie.';
+  }
+ }
 }
 function sourceChanged(source){
  clearTimeout(translateTimer);
