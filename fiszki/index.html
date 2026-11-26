@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="./icon.svg">
 <title>Fiszki — hiszpański</title>
 <style>
-html,body{touch-action:manipulation}
+html,body,*{touch-action:manipulation}
 :root{color-scheme:dark;--bg:#101713;--panel:#1a251f;--panel2:#223129;--text:#f2f5f1;--muted:#aab8ae;--green:#43c47b;--red:#e46b68;--line:#34453a;--gold:#f0c56b}
 *{box-sizing:border-box}body{margin:0;background:linear-gradient(160deg,#18241d,#0d120f 65%);color:var(--text);font:16px system-ui,-apple-system,sans-serif;min-height:100vh}
 button,input,select{font:inherit}button{cursor:pointer;border:0;border-radius:13px;padding:13px 16px;font-weight:700;color:#102016;background:var(--green)}button:disabled{opacity:.45;cursor:default}.wrap{width:min(760px,100%);margin:auto;padding:18px 16px 40px}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:5px 0 22px}.brand{font-size:21px;font-weight:850;letter-spacing:-.5px}.brand span{color:var(--green)}.tabs{display:flex;gap:7px;flex-wrap:wrap}.tab{background:var(--panel2);color:var(--muted);padding:9px 12px;font-size:14px}.tab.active{background:var(--green);color:#102016}.panel{background:rgba(26,37,31,.96);border:1px solid var(--line);border-radius:22px;padding:20px;margin-bottom:15px;box-shadow:0 12px 35px #0003}.hidden{display:none!important}.muted{color:var(--muted)}h1{font-size:25px;margin:0 0 8px}h2{font-size:19px;margin:0 0 14px}.field{display:grid;gap:7px;margin:14px 0}.field label{font-size:14px;color:var(--muted)}input,select{width:100%;background:#111a14;color:var(--text);border:1px solid var(--line);border-radius:12px;padding:13px;outline:none}input:focus,select:focus{border-color:var(--green)}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.row>*{flex:1}.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--line)}.danger{background:#512a29;color:#ffe4e1}.small{padding:9px 12px;font-size:14px}.progressline{height:9px;background:#344138;border-radius:99px;overflow:hidden;margin:12px 0 8px;display:flex}.goodbar{background:var(--green);height:100%}.badbar{background:var(--red);height:100%}.progressmeta{display:flex;justify-content:space-between;color:var(--muted);font-size:13px}.flash{min-height:390px;display:flex;flex-direction:column;align-items:center;text-align:center;justify-content:center}.picture{width:150px;height:130px;border-radius:25px;background:linear-gradient(145deg,#2b3d30,#17231b);display:grid;place-items:center;font-size:76px;margin:3px auto 20px;border:1px solid #405444;overflow:hidden}.picture img{width:100%;height:100%;object-fit:cover}.word{font-size:clamp(28px,7vw,43px);font-weight:850;letter-spacing:-1px;overflow-wrap:anywhere}.answer{font-size:clamp(22px,5vw,30px);color:var(--green);font-weight:750;margin:12px 0 5px}.hint{color:var(--muted);font-size:14px;margin:8px 0 18px}.full{width:100%;margin-top:10px}.rating{display:flex;gap:10px;width:100%;margin-top:18px}.rating button{flex:1}.rating .no{background:#713533;color:#fff}.rating .yes{background:#2f9c61;color:#fff}.audio{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:50%;width:22px;height:22px;padding:0;font-size:10px}.audioRow{margin-top:18px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:16px 0}.stat{background:#111a14;border:1px solid var(--line);border-radius:14px;padding:13px;text-align:center}.stat strong{display:block;font-size:25px}.stat span{font-size:12px;color:var(--muted)}.list{display:grid;gap:8px}.item{background:#111a14;border:1px solid var(--line);border-radius:13px;padding:12px;display:flex;align-items:center;gap:10px}.item .em{font-size:25px;width:38px;text-align:center}.item .words{flex:1;min-width:0}.item .words strong{display:block;overflow-wrap:anywhere}.item .words small{color:var(--muted)}.item button{padding:8px 10px}.pill{font-size:11px;border-radius:20px;padding:4px 8px;background:#344138;color:#d7e4da}.pill.hard{background:#63312e}.pill.review{background:#594b2b}.empty{text-align:center;padding:25px;color:var(--muted)}.foot{text-align:center;color:#78877d;font-size:12px;margin:22px 0}.notice{font-size:13px;color:var(--muted);line-height:1.5}.candidateGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:9px}.candidate{background:#111a14;border:1px solid var(--line);border-radius:10px;padding:5px;color:var(--text);font-size:11px;min-width:0}.candidate img{width:100%;height:72px;object-fit:cover;border-radius:6px;display:block;margin-bottom:4px}.candidate span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -19,6 +19,23 @@ button,input,select{font:inherit}button{cursor:pointer;border:0;border-radius:13
 </style>
 </head>
 <body>
+<script>
+/* iOS Safari: blokada powiększania po szybkim podwójnym stuknięciu; pinch-to-zoom pozostaje dostępny. */
+(function(){
+ let lastTap=0,multiTouch=false;
+ document.addEventListener('touchstart',function(e){
+  if(e.touches.length>1){multiTouch=true;lastTap=0}
+ },{passive:true});
+ document.addEventListener('touchend',function(e){
+  if(multiTouch){if(e.touches.length===0)multiTouch=false;return}
+  const now=Date.now();
+  if(lastTap&&now-lastTap<350){e.preventDefault();lastTap=0}
+  else{lastTap=now}
+ },{passive:false});
+ document.addEventListener('dblclick',function(e){e.preventDefault()},{passive:false});
+})();
+</script>
+
 <div class="wrap">
 <header class="top"><div class="brand">FISZKI <span>ES · PL</span></div><nav class="tabs"><button class="tab active" data-tab="learn">Nauka</button><button class="tab" data-tab="words">Słownik</button><button class="tab" data-tab="settings">Ustawienia</button></nav></header>
 <main>
