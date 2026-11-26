@@ -86,6 +86,7 @@ h1{font-size:29px;letter-spacing:-1px;margin:8px 0 6px}h2{font-size:21px;letter-
  <section id="homeView">
   <div class="row between"><div><h1>Moje treningi</h1><p class="sub">Wybierz plan, który chcesz wykonać.</p></div></div>
   <div id="workoutList" class="grid"></div>
+  <div class="field" style="margin-top:22px"><label for="lastWorkoutNote">Który trening robiłem ostatnio?</label><input id="lastWorkoutNote" type="text" placeholder="Np. Klatka piersiowa — 25.11"></div>
  </section>
  <section id="detailView" class="hidden">
   <button id="backBtn" class="back">← COFNIJ</button>
@@ -184,6 +185,11 @@ function getWorkout(){return state.workouts.find(w=>w.id===activeWorkout)}
 function renderHome(){
  $("homeView").classList.remove("hidden");$("detailView").classList.add("hidden");$("homeActions").classList.remove("hidden");$("detailActions").classList.add("hidden");
  $("workoutList").innerHTML=state.workouts.length?state.workouts.map(w=>`<button class="workout" data-open="${w.id}"><div class="row between"><span class="name">${esc(w.name)}</span><span class="arrow">↗</span></div><span class="count">${w.exercises.length} ${w.exercises.length===1?"ćwiczenie":w.exercises.length>=2&&w.exercises.length<=4?"ćwiczenia":"ćwiczeń"}</span></button>`).join(""):`<div class="empty" style="grid-column:1/-1">Nie masz jeszcze treningów.<br>Dodaj pierwszy plan przyciskiem poniżej.</div>`;
+ const note=$("lastWorkoutNote");
+ note.value=state.lastWorkoutNote||"";
+ note.oninput=()=>{state.lastWorkoutNote=note.value;scheduleSave()};
+ note.onchange=()=>{state.lastWorkoutNote=note.value;saveNow()};
+ note.onblur=()=>{state.lastWorkoutNote=note.value;saveNow()};
  document.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{activeWorkout=b.dataset.open;renderDetail()});
 }
 function renderDetail(){
