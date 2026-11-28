@@ -154,7 +154,7 @@ async function geminiImageQueries(card){
   return Array.isArray(data.queries)?data.queries.map(q=>String(q).trim()).filter(Boolean).slice(0,3):[];
  }finally{clearTimeout(timeout)}
 }
-async function findPicture(card,force=false){
+async function findPicture(card,force=false,chooseOnly=false){
  if((card.image&&!force)||(card.imageTried&&!force))return;card.imageTried=true;save();
  const hints=IMAGE_HINTS[String(card.es||'').toLowerCase()]||[];
  let aiTerms=[];
@@ -174,7 +174,7 @@ async function findPicture(card,force=false){
  candidates.sort((a,b)=>b.score-a.score);
  card.pictureCandidates=candidates.slice(0,6);
  const best=card.pictureCandidates[0],second=card.pictureCandidates[1];
- if(best&&(best.score>=3||(!second&&best.score>=1)||(best.score>=2&&best.score-(second?.score??-10)>=2))){
+ if(!chooseOnly&&best&&(best.score>=3||(!second&&best.score>=1)||(best.score>=2&&best.score-(second?.score??-10)>=2))){
   card.image=best.image;card.pictureCandidates=[];
   if(current===card){el('picture').innerHTML='<img alt="" data-local-image="'+escapeAttr(best.image)+'">';hydrateImages(el('picture'))}cacheImageUrl(best.image);
  }
@@ -234,9 +234,9 @@ function renderWords(){
  arr=arr.map((c,i)=>({c,i,t:Number(c.createdAt)||(String(c.id||'').startsWith('u')?Number(String(c.id).slice(1)):0)||0})).sort((a,b)=>wordSort==='newest'?(b.t-a.t||b.i-a.i):(a.t-b.t||a.i-b.i)).map(x=>x.c);
  el('wordList').innerHTML=arr.length?arr.map(c=>{
   const id=escapeAttr(c.id),editing=String(editingWordId)===String(c.id);
-  return '<div class="item"><span class="em">'+(c.image?'<img data-local-image="'+escapeAttr(c.image)+'" style="width:34px;height:34px;object-fit:cover;border-radius:8px">':escapeHtml(c.emoji||'💬'))+'</span><div class="words"><strong>'+escapeHtml(c.es)+'</strong><small>'+escapeHtml(c.pl)+'</small></div><span class="pill '+(c.status==='hard'?'hard':c.status==='review'?'review':'')+'">'+(c.status==='hard'?'trudne':c.status==='review'?'powtórka':'nowe')+'</span><div class="wordActions"><button class="secondary small" type="button" data-menu-toggle="'+id+'" aria-label="Więcej opcji">…</button><div class="wordMenu hidden" data-word-menu="'+id+'"><button class="secondary small" type="button" data-edit="'+id+'">Edytuj</button><button class="danger small" type="button" data-del="'+id+'">Usuń</button></div></div></div>'+
+  return '<div class="item"><span class="em">'+(c.image?'<img data-local-image="'+escapeAttr(c.image)+'" style="width:34px;height:34px;object-fit:cover;border-radius:8px">':escapeHtml(c.emoji||'💬'))+'</span><div class="words"><strong>'+escapeHtml(c.es)+'</strong><small>'+escapeHtml(c.pl)+'</small></div><span class="pill '+(c.status==='hard'?'hard':c.status==='review'?'review':'')+'">'+(c.status==='hard'?'trudne':c.status==='review'?'powtórka':'nowe')+'</span><div class="wordActions"><button class="secondary small" type="button" data-menu-toggle="'+id+'" aria-label="Więcej opcji">…</button><div class="wordMenu hidden" data-word-menu="'+id+'"><button class="secondary small" type="button" data-edit="'+id+'">Edytuj</button><button class="secondary small" type="button" data-change-picture="'+id+'">Zmień obrazek</button><button class="danger small" type="button" data-del="'+id+'">Usuń</button></div></div></div>'+
   (editing?'<div class="panel" style="margin:0 0 8px;padding:14px"><div class="field"><label>Hiszpański</label><input data-edit-es value="'+escapeAttr(c.es)+'"></div><div class="field"><label>Polski</label><input data-edit-pl value="'+escapeAttr(c.pl)+'"></div><div class="row"><button class="small" data-save-edit="'+id+'">Zapisz zmiany</button><button class="secondary small" data-cancel-edit>Anuluj</button></div></div>':'')+
-  (c.pictureCandidates?.length?'<div class="notice">Nie mam pewności, który obraz pasuje — wybierz właściwy:</div><div class="candidateGrid">'+c.pictureCandidates.map((p,i)=>'<button class="candidate" data-pick-card="'+id+'" data-pick-index="'+i+'"><img src="'+escapeAttr(p.image)+'" alt=""><span>'+escapeHtml(p.title.replace(/^File:/,''))+'</span></button>').join('')+'</div>':'');
+  ((c.picturePickerOpen||(!c.image&&c.pictureCandidates?.length))?'<div class="notice">'+(c.picturePickerLoading?'Wyszukuję 6 propozycji obrazka…':'Wybierz jeden z dostępnych obrazków:')+'</div>'+(c.pictureCandidates?.length?'<div class="candidateGrid">'+c.pictureCandidates.slice(0,6).map((p,i)=>'<button class="candidate" data-pick-card="'+id+'" data-pick-index="'+i+'"><img src="'+escapeAttr(p.image)+'" alt=""><span>'+escapeHtml(p.title.replace(/^File:/,''))+'</span></button>').join('')+'</div>':(c.picturePickerLoading?'':'<div class="notice">Nie znaleziono propozycji. Spróbuj ponownie.</div>')):'');
  }).join(''):'<div class="empty">Nie znaleziono słówek.</div>';
  hydrateImages(el('wordList'));
  document.querySelectorAll('[data-menu-toggle]').forEach(b=>b.onclick=()=>{
@@ -247,6 +247,7 @@ function renderWords(){
   if(opening)menu.classList.remove('hidden');
  });
  document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{editingWordId=b.dataset.edit;renderWords()});
+ document.querySelectorAll('[data-change-picture]').forEach(b=>b.onclick=async()=>{const card=cards.find(x=>String(x.id)===b.dataset.changePicture);if(!card)return;card.picturePickerOpen=true;card.picturePickerLoading=true;card.pictureCandidates=[];renderWords();await findPicture(card,true,true);card.picturePickerLoading=false;renderWords()});
  document.querySelectorAll('[data-cancel-edit]').forEach(b=>b.onclick=()=>{editingWordId=null;renderWords()});
  document.querySelectorAll('[data-save-edit]').forEach(b=>b.onclick=()=>{
   const card=cards.find(x=>String(x.id)===b.dataset.saveEdit);
@@ -259,7 +260,7 @@ function renderWords(){
   editingWordId=null;save();renderWords();
  });
  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{if(confirm('Usunąć tę fiszkę?')){cards=cards.filter(c=>String(c.id)!==b.dataset.del);if(String(editingWordId)===b.dataset.del)editingWordId=null;save();renderWords()}});
- document.querySelectorAll('[data-pick-card]').forEach(b=>b.onclick=()=>{const c=cards.find(x=>String(x.id)===b.dataset.pickCard),p=c?.pictureCandidates?.[Number(b.dataset.pickIndex)];if(!c||!p)return;c.image=p.image;c.pictureCandidates=[];c.imageTried=true;save();if(current===c){el('picture').innerHTML='<img alt="" data-local-image="'+escapeAttr(c.image)+'">';hydrateImages(el('picture'))}cacheImageUrl(c.image);renderWords()});
+ document.querySelectorAll('[data-pick-card]').forEach(b=>b.onclick=()=>{const c=cards.find(x=>String(x.id)===b.dataset.pickCard),p=c?.pictureCandidates?.[Number(b.dataset.pickIndex)];if(!c||!p)return;c.image=p.image;c.pictureCandidates=[];c.picturePickerOpen=false;c.picturePickerLoading=false;c.imageTried=true;save();if(current===c){el('picture').innerHTML='<img alt="" data-local-image="'+escapeAttr(c.image)+'">';hydrateImages(el('picture'))}cacheImageUrl(c.image);renderWords()});
 }
 el('search').oninput=renderWords;
 el('sortWords').onclick=()=>{wordSort=wordSort==='newest'?'oldest':'newest';el('sortWords').textContent='Kolejność: '+(wordSort==='newest'?'najnowsze':'najstarsze');renderWords()};
