@@ -87,6 +87,7 @@ const SEED=[
 ];
 const KEY='espl_cards_v1',VOICE='espl_voice_v1',SESSION_KEY='espl_session_done_v1';
 let cards=load(),queue=[],index=0,good=0,bad=0,missedQueue=[],results=[],current=null,dir='es-pl',revealed=false,wordSort='newest',sessionFilter='all';
+let editingWordId=null;
 let sessionDone=loadSessionDone();
 function loadSessionDone(){try{const value=JSON.parse(localStorage.getItem(SESSION_KEY)||'[]');return new Set(Array.isArray(value)?value.map(String):[])}catch(e){return new Set()}}
 function saveSessionDone(){localStorage.setItem(SESSION_KEY,JSON.stringify([...sessionDone]));updateSourceCounts()}
@@ -227,7 +228,35 @@ function rate(known){current.seen=(current.seen||0)+1;if(known){good++;current.c
 function finish(){el('study').classList.add('hidden');el('finish').classList.remove('hidden');let counts={new:0,review:0,hard:0};cards.forEach(c=>counts[c.status]=(counts[c.status]||0)+1);el('newN').textContent=counts.new;el('reviewN').textContent=counts.review;el('hardN').textContent=counts.hard;const remaining=cards.filter(c=>(sessionFilter==='all'||c.status===sessionFilter)&&!sessionDone.has(String(c.id))).length;const remainingAll=cards.filter(c=>!sessionDone.has(String(c.id))).length;let sessionMessage=remainingAll===0?' Wszystkie fiszki w słowniku zostały przerobione. Przy następnym rozpoczęciu nauki zacznie się nowa sesja.':remaining===0?' Wszystkie fiszki z wybranej kategorii zostały już przerobione. Aby kontynuować bieżącą sesję, wybierz „Wszystkie” albo inną kategorię.':' W tej sesji pozostało jeszcze '+remaining+' fiszek z wybranej kategorii.';el('finishText').textContent='Wynik tej serii: '+good+' poprawnych, '+bad+' błędnych. Błędne odpowiedzi wracały do powtórki.'+sessionMessage}
 el('resetSession').onclick=()=>{if(confirm('Zresetować postęp bieżącej sesji? Wszystkie fiszki będą ponownie dostępne. Słownik i statystyki pozostaną bez zmian.'))resetSession()};
 el('start').onclick=start;el('abort').onclick=()=>{if(confirm('Przerwać naukę? Dotychczasowe odpowiedzi zostaną zapisane.')){if('speechSynthesis'in window)speechSynthesis.cancel();el('study').classList.add('hidden');el('setup').classList.remove('hidden')}};el('reveal').onclick=reveal;el('speak').onclick=()=>speak(current.es);el('known').onclick=()=>rate(true);el('missed').onclick=()=>rate(false);el('again').onclick=()=>{el('finish').classList.add('hidden');el('setup').classList.remove('hidden')};
-function renderWords(){let q=el('search').value.toLowerCase();let arr=cards.filter(c=>(c.es+' '+c.pl).toLowerCase().includes(q));arr=arr.map((c,i)=>({c,i,t:Number(c.createdAt)||(String(c.id||'').startsWith('u')?Number(String(c.id).slice(1)):0)||0})).sort((a,b)=>wordSort==='newest'?(b.t-a.t||b.i-a.i):(a.t-b.t||a.i-b.i)).map(x=>x.c);el('wordList').innerHTML=arr.length?arr.map(c=>'<div class="item"><span class="em">'+(c.image?'<img data-local-image="'+escapeAttr(c.image)+'" style="width:34px;height:34px;object-fit:cover;border-radius:8px">':escapeHtml(c.emoji||'💬'))+'</span><div class="words"><strong>'+escapeHtml(c.es)+'</strong><small>'+escapeHtml(c.pl)+'</small></div><span class="pill '+(c.status==='hard'?'hard':c.status==='review'?'review':'')+'">'+(c.status==='hard'?'trudne':c.status==='review'?'powtórka':'nowe')+'</span><button class="secondary small" data-del="'+c.id+'">Usuń</button></div>'+(c.pictureCandidates?.length?'<div class="notice">Nie mam pewności, który obraz pasuje — wybierz właściwy:</div><div class="candidateGrid">'+c.pictureCandidates.map((p,i)=>'<button class="candidate" data-pick-card="'+c.id+'" data-pick-index="'+i+'"><img src="'+escapeAttr(p.image)+'" alt=""><span>'+escapeHtml(p.title.replace(/^File:/,''))+'</span></button>').join('')+'</div>':'')).join(''):'<div class="empty">Nie znaleziono słówek.</div>';hydrateImages(el('wordList'));document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{if(confirm('Usunąć tę fiszkę?')){cards=cards.filter(c=>c.id!==b.dataset.del);save();renderWords()}});document.querySelectorAll('[data-pick-card]').forEach(b=>b.onclick=()=>{const c=cards.find(x=>x.id===b.dataset.pickCard),p=c?.pictureCandidates?.[Number(b.dataset.pickIndex)];if(!c||!p)return;c.image=p.image;c.pictureCandidates=[];c.imageTried=true;save();if(current===c){el('picture').innerHTML='<img alt="" data-local-image="'+escapeAttr(c.image)+'">';hydrateImages(el('picture'))}cacheImageUrl(c.image);renderWords()})}
+function renderWords(){
+ let q=el('search').value.toLowerCase();
+ let arr=cards.filter(c=>(c.es+' '+c.pl).toLowerCase().includes(q));
+ arr=arr.map((c,i)=>({c,i,t:Number(c.createdAt)||(String(c.id||'').startsWith('u')?Number(String(c.id).slice(1)):0)||0})).sort((a,b)=>wordSort==='newest'?(b.t-a.t||b.i-a.i):(a.t-b.t||a.i-b.i)).map(x=>x.c);
+ el('wordList').innerHTML=arr.length?arr.map(c=>{
+  const id=escapeAttr(c.id),editing=String(editingWordId)===String(c.id);
+  return '<div class="item"><span class="em">'+(c.image?'<img data-local-image="'+escapeAttr(c.image)+'" style="width:34px;height:34px;object-fit:cover;border-radius:8px">':escapeHtml(c.emoji||'💬'))+'</span><div class="words"><strong>'+escapeHtml(c.es)+'</strong><small>'+escapeHtml(c.pl)+'</small></div><span class="pill '+(c.status==='hard'?'hard':c.status==='review'?'review':'')+'">'+(c.status==='hard'?'trudne':c.status==='review'?'powtórka':'nowe')+'</span><button class="secondary small" data-edit="'+id+'">Edytuj</button><button class="secondary small" data-del="'+id+'">Usuń</button></div>'+
+  (editing?'<div class="panel" style="margin:0 0 8px;padding:14px"><div class="field"><label>Hiszpański</label><input data-edit-es value="'+escapeAttr(c.es)+'"></div><div class="field"><label>Polski</label><input data-edit-pl value="'+escapeAttr(c.pl)+'"></div><div class="field"><label>Emoji</label><input data-edit-emoji maxlength="8" value="'+escapeAttr(c.emoji||'')+'"></div><div class="field"><label>Adres obrazka</label><input data-edit-image value="'+escapeAttr(c.image||'')+'" placeholder="Opcjonalnie"></div><div class="row"><button class="small" data-save-edit="'+id+'">Zapisz zmiany</button><button class="secondary small" data-cancel-edit>Anuluj</button></div></div>':'')+
+  (c.pictureCandidates?.length?'<div class="notice">Nie mam pewności, który obraz pasuje — wybierz właściwy:</div><div class="candidateGrid">'+c.pictureCandidates.map((p,i)=>'<button class="candidate" data-pick-card="'+id+'" data-pick-index="'+i+'"><img src="'+escapeAttr(p.image)+'" alt=""><span>'+escapeHtml(p.title.replace(/^File:/,''))+'</span></button>').join('')+'</div>':'');
+ }).join(''):'<div class="empty">Nie znaleziono słówek.</div>';
+ hydrateImages(el('wordList'));
+ document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{editingWordId=b.dataset.edit;renderWords()});
+ document.querySelectorAll('[data-cancel-edit]').forEach(b=>b.onclick=()=>{editingWordId=null;renderWords()});
+ document.querySelectorAll('[data-save-edit]').forEach(b=>b.onclick=()=>{
+  const card=cards.find(x=>String(x.id)===b.dataset.saveEdit);
+  if(!card)return;
+  const es=el('wordList').querySelector('[data-edit-es]').value.trim();
+  const pl=el('wordList').querySelector('[data-edit-pl]').value.trim();
+  if(!es||!pl){alert('Hiszpańskie i polskie pole nie mogą być puste.');return}
+  const oldImage=card.image||'',newImage=el('wordList').querySelector('[data-edit-image]').value.trim();
+  card.es=es;card.pl=pl;card.emoji=el('wordList').querySelector('[data-edit-emoji]').value.trim()||'💬';
+  card.image=newImage;
+  if(newImage&&newImage!==oldImage)cacheImageUrl(newImage);
+  if(newImage!==oldImage){card.imageTried=!!newImage;card.pictureCandidates=[]}
+  editingWordId=null;save();renderWords();
+ });
+ document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{if(confirm('Usunąć tę fiszkę?')){cards=cards.filter(c=>String(c.id)!==b.dataset.del);if(String(editingWordId)===b.dataset.del)editingWordId=null;save();renderWords()}});
+ document.querySelectorAll('[data-pick-card]').forEach(b=>b.onclick=()=>{const c=cards.find(x=>String(x.id)===b.dataset.pickCard),p=c?.pictureCandidates?.[Number(b.dataset.pickIndex)];if(!c||!p)return;c.image=p.image;c.pictureCandidates=[];c.imageTried=true;save();if(current===c){el('picture').innerHTML='<img alt="" data-local-image="'+escapeAttr(c.image)+'">';hydrateImages(el('picture'))}cacheImageUrl(c.image);renderWords()});
+}
 el('search').oninput=renderWords;
 el('sortWords').onclick=()=>{wordSort=wordSort==='newest'?'oldest':'newest';el('sortWords').textContent='Kolejność: '+(wordSort==='newest'?'najnowsze':'najstarsze');renderWords()};
 el('updatePictures').onclick=async()=>{
